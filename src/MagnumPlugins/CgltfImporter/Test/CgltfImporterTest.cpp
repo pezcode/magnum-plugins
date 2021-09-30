@@ -263,7 +263,6 @@ constexpr struct {
 constexpr struct {
     const char* name;
     const char* file;
-    const char* message;
 } SkinOutOfBoundsData[]{
     {"joint out of bounds", "skin-invalid-joint-oob.gltf"},
     {"accessor out of bounds", "skin-invalid-accessor-oob.gltf"}
@@ -342,7 +341,6 @@ constexpr struct {
 constexpr struct {
     const char* name;
     const char* file;
-    const char* message;
 } MeshOutOfBoundsData[]{
     {"buffer index out of bounds", "mesh-invalid-buffer-oob.gltf"},
     {"buffer view index out of bounds", "mesh-invalid-bufferview-oob.gltf"},
@@ -2529,6 +2527,7 @@ void CgltfImporterTest::meshCustomAttributes() {
     const MeshAttribute negativePaddingAttribute = importer->meshAttributeForName("_NEGATIVE_PADDING");
     CORRADE_COMPARE(negativePaddingAttribute, meshAttributeCustom(4));
     const MeshAttribute notAnIdentityAttribute = importer->meshAttributeForName("NOT_AN_IDENTITY");
+    CORRADE_VERIFY(notAnIdentityAttribute != MeshAttribute{});
 
     auto mesh = importer->mesh("standard types");
     CORRADE_VERIFY(mesh);
@@ -4385,7 +4384,7 @@ void CgltfImporterTest::encodedUris() {
                 strings[4] = filename;
             else if(filename.find("image-escaped") == 0)
                 strings[5] = filename;
-            return bytes;
+            return Containers::arrayView(bytes);
         }, strings);
 
     /* Prevent the file callback being used for the main glTF content */

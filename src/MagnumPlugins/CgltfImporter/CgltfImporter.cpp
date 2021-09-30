@@ -184,7 +184,7 @@ Containers::Array<JsonToken> parseJson(Containers::StringView str) {
     Containers::Array<jsmntok_t> jsmnTokens{std::size_t(numTokens)};
     jsmn_init(&parser);
     numTokens = jsmn_parse(&parser, str.data(), str.size(), jsmnTokens.data(), numTokens);
-    if(numTokens != jsmnTokens.size())
+    if(std::size_t(numTokens) != jsmnTokens.size())
         return {};
 
     Containers::Array<JsonToken> tokens{jsmnTokens.size()};
@@ -293,7 +293,7 @@ struct CgltfImporter::Document {
 
 CgltfImporter::Document::~Document() {
     if(data) cgltf_free(data);
-};
+}
 
 Containers::Optional<Containers::ArrayView<const char>> CgltfImporter::Document::loadUri(Containers::StringView uri, Containers::Array<char>& storage, const char* const function) {
     const AbstractImporter& importer = *static_cast<AbstractImporter*>(options.file.user_data);
@@ -333,7 +333,7 @@ Containers::Optional<Containers::ArrayView<const char>> CgltfImporter::Document:
         }
         CORRADE_INTERNAL_ASSERT(decoded);
         storage = Containers::Array<char>{static_cast<char*>(decoded), size};
-        return storage;
+        return Containers::arrayCast<const char>(storage);
     } else if(importer.fileCallback()) {
         const std::string fullPath = Utility::Directory::join(filePath ? *filePath : "", decodeUri(decodeString(uri)));
         Containers::Optional<Containers::ArrayView<const char>> view = importer.fileCallback()(fullPath, InputFileCallbackPolicy::LoadPermanent, importer.fileCallbackUserData());
@@ -353,7 +353,7 @@ Containers::Optional<Containers::ArrayView<const char>> CgltfImporter::Document:
             return Containers::NullOpt;
         }
         storage = std::move(Utility::Directory::read(fullPath));
-        return storage;
+        return Containers::arrayCast<const char>(storage);
     }
 }
 
@@ -543,6 +543,8 @@ void CgltfImporter::doOpenData(const Containers::ArrayView<const char> data) {
                 CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
             /* This should never happen, it means we passed a nullptr somewhere */
             case cgltf_result_invalid_options:
+                CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
+            case cgltf_result_success:
                 CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
         }
 
@@ -2323,8 +2325,8 @@ Containers::Optional<TextureData> CgltfImporter::doTexture(const UnsignedInt id)
                     const auto tokens = parseJson(tex.extensions[i].data);
                     if(tokens.size() == 3 && tokens[0].type == JSMN_OBJECT && tokens[1].type == JSMN_STRING && tokens[1].str == "source" && tokens[2].type == JSMN_PRIMITIVE) {
                         std::size_t parsed = 0;
-                        if(parsed != tokens[2].str.size() || source < 0 || source >= _d->data->images_count) {
                         const Int source = std::stoi(tokens[2].str, &parsed);
+                        if(parsed != tokens[2].str.size() || source < 0 || UnsignedInt(source) >= _d->data->images_count) {
                             Error{} << "Trade::CgltfImporter::texture():" << ext << "image" << source << "out of bounds for" << _d->data->images_count << "images";
                             return Containers::NullOpt;
                         }
