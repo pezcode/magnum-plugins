@@ -71,5 +71,9 @@ if(MAGNUM_CGLTFIMPORTER_BUILD_STATIC)
     target_sources(CgltfImporter INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/importStaticPlugin.cpp)
 endif()
 
+if(BUILD_TESTS)
+    add_subdirectory(Test)
+endif()
+
 # MagnumPlugins CgltfImporter target alias for superprojects
 add_library(MagnumPlugins::CgltfImporter ALIAS CgltfImporter)
