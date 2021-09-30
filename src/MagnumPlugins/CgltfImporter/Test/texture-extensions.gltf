@@ -1,0 +1,107 @@
+{
+    "asset" : {
+        "version" : "2.0"
+    },
+    "images" : [
+        {
+            "uri": "nonexistent.png"
+        },
+        {
+            "uri" : "texture.basis"
+        },
+        {
+            "uri" : "nonexistent.ktx2",
+            "mimeType": "image/ktx2"
+        },
+        {
+            "uri" : "nonexistent.dds",
+            "mimeType": "image/vnd-ms.dds"
+        },
+        {
+            "uri" : "nonexistent.mgnm",
+            "mimeType": "image/mgnm"
+        }
+    ],
+    "textures" : [
+        {
+            "name": "GOOGLE_texture_basis",
+            "source": 0,
+            "extensions": {
+                "GOOGLE_texture_basis": {
+                    "source": 1
+                }
+            }
+        },
+        {
+            "name": "KHR_texture_basisu",
+            "source": 0,
+            "extensions": {
+                "KHR_texture_basisu": {
+                    "source": 2
+                }
+            }
+        },
+        {
+            "name": "MSFT_texture_dds",
+            "source": 0,
+            "extensions": {
+                "MSFT_texture_dds": {
+                    "source": 3
+                }
+            }
+        },
+        {
+            "name": "MSFT_texture_dds and GOOGLE_texture_basis",
+            "note": "The first supported extension wins",
+            "source": 0,
+            "extensions": {
+                "MSFT_texture_dds": {
+                    "source": 3
+                },
+                "GOOGLE_texture_basis": {
+                    "source": 1
+                }
+            }
+        },
+        {
+            "name": "MSFT_texture_dds and KHR_texture_basisu",
+            "note": "KHR_texture_basisu has preference because it's handled by cgltf",
+            "source": 0,
+            "extensions": {
+                "MSFT_texture_dds": {
+                    "source": 3
+                },
+                "KHR_texture_basisu": {
+                    "source": 2
+                }
+            }
+        },
+        {
+            "name": "unknown extension",
+            "source": 0,
+            "extensions": {
+                "MGNM_fake_extension": {
+                    "source": 4
+                }
+            }
+        },
+        {
+            "name": "MSFT_texture_dds and unknown",
+            "source": 0,
+            "extensions": {
+                "MGNM_fake_extension": {
+                    "source": 4
+                },
+                "MSFT_texture_dds": {
+                    "source": 3
+                }
+            }
+        }
+    ],
+    "extensionsUsed": [
+        "GOOGLE_texture_basis",
+        "KHR_texture_basisu",
+        "MSFT_texture_dds",
+        "MGNM_fake_extension"
+    ]
+}

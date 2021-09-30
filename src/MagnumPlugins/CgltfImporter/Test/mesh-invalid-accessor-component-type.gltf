@@ -1,0 +1,37 @@
+{
+    "asset": {
+        "version": "2.0"
+    },
+    "meshes": [
+        {
+            "name": "unknown component type",
+            "primitives": [
+                {
+                    "attributes": {
+                        "_THING": 0
+                    }
+                }
+            ]
+        }
+    ],
+    "accessors": [
+        {
+            "bufferView": 0,
+            "componentType": 9999,
+            "count": 1,
+            "type": "SCALAR"
+        }
+    ],
+    "bufferViews": [
+        {
+            "buffer": 0,
+            "byteLength": 0
+        }
+    ],
+    "buffers": [
+        {
+            "byteLength": 0,
+            "uri": "external-data.bin"
+        }
+    ]
+}
