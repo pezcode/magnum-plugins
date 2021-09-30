@@ -177,7 +177,7 @@ struct JsonToken {
 
 Containers::Array<JsonToken> parseJson(Containers::StringView str) {
     jsmn_parser parser{0, 0, 0};
-    int numTokens = jsmn_parse(&parser, str.data(), str.size(), nullptr, 0);
+    Int numTokens = jsmn_parse(&parser, str.data(), str.size(), nullptr, 0);
     if(numTokens <= 0)
         return {};
 
@@ -188,7 +188,7 @@ Containers::Array<JsonToken> parseJson(Containers::StringView str) {
         return {};
 
     Containers::Array<JsonToken> tokens{jsmnTokens.size()};
-    for(int i = 0; i != numTokens; ++i) {
+    for(Int i = 0; i != numTokens; ++i) {
         tokens[i].type = jsmnTokens[i].type;
         tokens[i].str = str.slice(jsmnTokens[i].start, jsmnTokens[i].end);
         tokens[i].size = jsmnTokens[i].size;
@@ -2323,8 +2323,8 @@ Containers::Optional<TextureData> CgltfImporter::doTexture(const UnsignedInt id)
                     const auto tokens = parseJson(tex.extensions[i].data);
                     if(tokens.size() == 3 && tokens[0].type == JSMN_OBJECT && tokens[1].type == JSMN_STRING && tokens[1].str == "source" && tokens[2].type == JSMN_PRIMITIVE) {
                         std::size_t parsed = 0;
-                        const int source = std::stoi(tokens[2].str, &parsed);
                         if(parsed != tokens[2].str.size() || source < 0 || source >= _d->data->images_count) {
+                        const Int source = std::stoi(tokens[2].str, &parsed);
                             Error{} << "Trade::CgltfImporter::texture():" << ext << "image" << source << "out of bounds for" << _d->data->images_count << "images";
                             return Containers::NullOpt;
                         }
@@ -2427,7 +2427,7 @@ Containers::Optional<TextureData> CgltfImporter::doTexture(const UnsignedInt id)
 
     Math::Vector3<SamplerWrapping> wrapping;
     wrapping.z() = SamplerWrapping::Repeat;
-    for(auto&& wrap: std::initializer_list<Containers::Pair<int, int>>{
+    for(auto&& wrap: std::initializer_list<Containers::Pair<Int, Int>>{
         {tex.sampler->wrap_s, 0}, {tex.sampler->wrap_t, 1}})
     {
         switch(wrap.first()) {
