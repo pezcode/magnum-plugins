@@ -1880,7 +1880,7 @@ void CgltfImporterTest::lightMissingSpot() {
     CORRADE_COMPARE(light->range(), Constants::inf());
     CORRADE_COMPARE(light->innerConeAngle(), 0.0_radf);
     /* Magnum uses full angles, glTF uses half angles */
-    CORRADE_COMPARE(light->outerConeAngle(), Rad{Constants::piQuarter()*2.0f});
+    CORRADE_COMPARE(light->outerConeAngle(), Rad{45.0_degf*2.0f});
 }
 
 void CgltfImporterTest::scene() {
