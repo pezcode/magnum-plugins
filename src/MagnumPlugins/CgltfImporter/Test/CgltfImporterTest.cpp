@@ -1191,12 +1191,14 @@ void CgltfImporterTest::animationInvalid() {
 void CgltfImporterTest::animationInvalidInterpolation() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
 
-    /* Cgltf parses an invalid interpolation mode as linear, without any error */
     CORRADE_VERIFY(importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR,
         "animation-invalid.gltf")));
 
     auto animation = importer->animation("unsupported interpolation type");
-    CORRADE_VERIFY(animation);
+    {
+        CORRADE_EXPECT_FAIL("Cgltf parses an invalid interpolation mode as linear, without any error.");
+        CORRADE_VERIFY(!animation);
+    }
     CORRADE_COMPARE(animation->trackCount(), 1);
     auto track = animation->track(0);
     CORRADE_COMPARE(track.interpolation(), Animation::Interpolation::Linear);
@@ -1865,11 +1867,11 @@ void CgltfImporterTest::lightMissingSpot() {
         "light-missing-spot.gltf")));
     CORRADE_COMPARE(importer->lightCount(), 1);
 
-    /* The spot object is required for lights of type spot but cgltf doesn't
-       care if it's missing. It just sets everything to default values. */
-
     auto light = importer->light(0);
-    CORRADE_VERIFY(light);
+    {
+        CORRADE_EXPECT_FAIL("The spot object is required for lights of type spot but cgltf doesn't care if it's missing. It just sets everything to default values.");
+        CORRADE_VERIFY(!light);
+    }
 
     CORRADE_COMPARE(light->type(), LightData::Type::Spot);
     CORRADE_COMPARE(light->color(), (Color3{1.0f, 1.0f, 1.0f}));
