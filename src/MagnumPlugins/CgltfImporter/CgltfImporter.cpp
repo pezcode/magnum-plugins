@@ -803,16 +803,13 @@ Containers::Optional<AnimationData> CgltfImporter::doAnimation(UnsignedInt id) {
         for(std::size_t i = 0; i != animation.samplers_count; ++i) {
             const cgltf_animation_sampler& sampler = animation.samplers[i];
 
-            if(!checkAccessor(_d->data, "animation", sampler.input))
-                return Containers::NullOpt;
-            if(!checkAccessor(_d->data, "animation", sampler.output))
-                return Containers::NullOpt;
-
             /** @todo handle alignment once we do more than just four-byte types */
 
             /* If the input view is not yet present in the output data buffer,
                add it */
             if(samplerData.find(sampler.input) == samplerData.end()) {
+                if(!checkAccessor(_d->data, "animation", sampler.input))
+                    return Containers::NullOpt;
                 Containers::Optional<Containers::StridedArrayView2D<const char>> view = _d->accessorView(sampler.input, "animation");
                 if(!view)
                     return Containers::NullOpt;
@@ -824,6 +821,8 @@ Containers::Optional<AnimationData> CgltfImporter::doAnimation(UnsignedInt id) {
             /* If the output view is not yet present in the output data buffer,
                add it */
             if(samplerData.find(sampler.output) == samplerData.end()) {
+                if(!checkAccessor(_d->data, "animation", sampler.output))
+                    return Containers::NullOpt;
                 Containers::Optional<Containers::StridedArrayView2D<const char>> view = _d->accessorView(sampler.output, "animation");
                 if(!view)
                     return Containers::NullOpt;
