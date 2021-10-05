@@ -1527,11 +1527,11 @@ Containers::Optional<MeshData> CgltfImporter::doMesh(const UnsignedInt id, Unsig
            COLORS_1...). If not, print a warning, because in the MeshData they
            will appear as contiguous. */
         if(attribute.type != cgltf_attribute_type_invalid) {
-            if(attribute.type != lastAttribute.type) {
-                if(attribute.index != 0)
-                    Warning{} << "Trade::CgltfImporter::mesh(): expected attribute" << nameString << "to start at index 0";
-            } else if(attribute.index != lastAttribute.index + 1)
-                Warning{} << "Trade::CgltfImporter::mesh(): expected attribute" << nameString << "to continue at index" << lastAttribute.index + 1;
+            if(attribute.type != lastAttribute.type)
+                lastAttribute.index = -1;
+
+            if(attribute.index != lastAttribute.index + 1)
+                Warning{} << "Trade::CgltfImporter::mesh(): found attribute" << nameString << "but expected" << semantic << Debug::nospace << "_" << Debug::nospace << lastAttribute.index + 1;
         }
         lastAttribute = attribute;
 

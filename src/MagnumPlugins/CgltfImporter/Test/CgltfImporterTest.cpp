@@ -2630,8 +2630,8 @@ void CgltfImporterTest::meshUnorderedAttributes() {
 
     /* No warning about _CUSTOM_4 and _CUSTOM_1 */
     CORRADE_COMPARE(out.str(),
-        "Trade::CgltfImporter::mesh(): expected attribute COLOR_3 to start at index 0\n"
-        "Trade::CgltfImporter::mesh(): expected attribute COLOR_9 to continue at index 4\n"
+        "Trade::CgltfImporter::mesh(): found attribute COLOR_3 but expected COLOR_0\n"
+        "Trade::CgltfImporter::mesh(): found attribute COLOR_9 but expected COLOR_4\n"
     );
 
     /* Sets of the same attribute are imported in ascending set order. Checking
