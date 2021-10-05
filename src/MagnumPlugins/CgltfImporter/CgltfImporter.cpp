@@ -352,7 +352,7 @@ Containers::Optional<Containers::ArrayView<const char>> CgltfImporter::Document:
             Error{} << "Trade::CgltfImporter::" << Debug::nospace << function << Debug::nospace << "(): error opening file:" << Containers::StringView{fullPath} << ": file not found";
             return Containers::NullOpt;
         }
-        storage = std::move(Utility::Directory::read(fullPath));
+        storage = Utility::Directory::read(fullPath);
         return Containers::arrayCast<const char>(storage);
     }
 }
