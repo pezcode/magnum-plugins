@@ -2439,7 +2439,7 @@ Containers::Optional<TextureData> CgltfImporter::doTexture(const UnsignedInt id)
         {tex.sampler->wrap_s, 0}, {tex.sampler->wrap_t, 1}})
     {
         switch(wrap.first()) {
-        case GltfTextureWrap::Repeat:
+            case GltfTextureWrap::Repeat:
                 wrapping[wrap.second()] = SamplerWrapping::Repeat;
                 break;
             case GltfTextureWrap::ClampToEdge:
