@@ -853,8 +853,7 @@ Containers::Optional<AnimationData> CgltfImporter::doAnimation(UnsignedInt id) {
     std::size_t trackCount = 0;
     for(const cgltf_animation& animation : animations) {
         for(std::size_t i = 0; i != animation.channels_count; ++i) {
-            /* The target node is not required, skip channel if it's missing.
-               This mimics tinygltf behavior. */
+            /* Skip animations without a target node. See comment below. */
             if(animation.channels[i].target_node)
                 ++trackCount;
         }
@@ -869,6 +868,10 @@ Containers::Optional<AnimationData> CgltfImporter::doAnimation(UnsignedInt id) {
             const cgltf_animation_channel& channel = animation.channels[i];
             const cgltf_animation_sampler& sampler = *channel.sampler;
 
+            /* Skip animations without a target node. Consistent with
+               tinygltf's behavior, currently there are no extensions for
+               animating materials or anything else so there's no point in
+               importing such animations. */
             if(!channel.target_node)
                 continue;
 
@@ -1521,6 +1524,9 @@ Containers::Optional<MeshData> CgltfImporter::doMesh(const UnsignedInt id, Unsig
         const Containers::StringView semantic = attribute.type != cgltf_attribute_type_invalid ?
             nameString.partition('_')[0] : nameString;
 
+        /* Numbered attributes are expected to be contiguous (COLORS_0,
+           COLORS_1...). If not, print a warning, because in the MeshData they
+           will appear as contiguous. */
         if(attribute.type != cgltf_attribute_type_invalid) {
             if(attribute.type != lastAttribute.type) {
                 if(attribute.index != 0)
