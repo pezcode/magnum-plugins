@@ -548,7 +548,7 @@ void CgltfImporter::doOpenData(const Containers::ArrayView<const char> data) {
                 CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
         }
 
-        return "unknown error";
+        CORRADE_ASSERT_UNREACHABLE("Trade::CgltfImporter::openData(): unknown cgltf_result value" << result, "unknown error"); /* LCOV_EXCL_LINE */
     };
 
     if(result != cgltf_result_success) {
