@@ -26,7 +26,7 @@
 
 #include "CgltfImporter.h"
 
-#include <algorithm>
+#include <algorithm> /* std::stable_sort() */
 #include <unordered_map>
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/ArrayView.h>
