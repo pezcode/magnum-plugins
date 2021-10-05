@@ -531,7 +531,7 @@ void CgltfImporter::doOpenData(const Containers::ArrayView<const char> data) {
             case cgltf_result_out_of_memory:  return "out of memory";
             case cgltf_result_unknown_format: return "unknown binary glTF format";
             case cgltf_result_invalid_json:   return "invalid JSON";
-            case cgltf_result_invalid_gltf:   return "invalid glTF";
+            case cgltf_result_invalid_gltf:   return "invalid glTF, usually caused by invalid indices or missing required attributes";
             case cgltf_result_legacy_gltf:    return "legacy glTF version";
             case cgltf_result_data_too_short: return "data too short";
             /* Only returned from cgltf's default file callback */

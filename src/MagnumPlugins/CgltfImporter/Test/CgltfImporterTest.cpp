@@ -402,7 +402,7 @@ constexpr struct {
 } MeshValidationData[]{
     {"accessor count larger than buffer size", "mesh-invalid-accessor-short.gltf", "data too short"},
     {"buffer view range out of bounds", "mesh-invalid-bufferview-short.gltf", "data too short"},
-    {"different vertex count for each accessor", "mesh-invalid-mismatching-attribute-count.gltf", "invalid glTF"}
+    {"different vertex count for each accessor", "mesh-invalid-mismatching-attribute-count.gltf", "invalid glTF, usually caused by invalid indices or missing required attributes"}
 };
 
 constexpr struct {
@@ -1165,7 +1165,7 @@ void CgltfImporterTest::animationOutOfBounds() {
     std::ostringstream out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR, data.file)));
-    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF\n");
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF, usually caused by invalid indices or missing required attributes\n");
 }
 
 void CgltfImporterTest::animationInvalid() {
@@ -1844,7 +1844,7 @@ void CgltfImporterTest::lightInvalidColorSize() {
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR,
         "light-invalid-color-size.gltf")));
-    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF\n");
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF, usually caused by invalid indices or missing required attributes\n");
 }
 
 void CgltfImporterTest::lightMissingType() {
@@ -2008,7 +2008,7 @@ void CgltfImporterTest::sceneOutOfBounds() {
     std::ostringstream out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR, data.file)));
-    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF\n");
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF, usually caused by invalid indices or missing required attributes\n");
 }
 
 void CgltfImporterTest::sceneCycle() {
@@ -2020,7 +2020,7 @@ void CgltfImporterTest::sceneCycle() {
     std::ostringstream out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR, data.file)));
-    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): file failed validation: invalid glTF\n");
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): file failed validation: invalid glTF, usually caused by invalid indices or missing required attributes\n");
 }
 
 void CgltfImporterTest::objectTransformation() {
@@ -2238,7 +2238,7 @@ void CgltfImporterTest::skinOutOfBounds() {
     std::ostringstream out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR, data.file)));
-    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF\n");
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF, usually caused by invalid indices or missing required attributes\n");
 }
 
 void CgltfImporterTest::skinInvalid() {
@@ -3071,7 +3071,7 @@ void CgltfImporterTest::meshOutOfBounds() {
     std::ostringstream out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR, data.file)));
-    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF\n");
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF, usually caused by invalid indices or missing required attributes\n");
 }
 
 void CgltfImporterTest::meshInvalid() {
@@ -3131,7 +3131,7 @@ void CgltfImporterTest::meshInvalidIndexComponentType() {
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
         "mesh-invalid-index-component-type.gltf")));
-    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): file failed validation: invalid glTF\n");
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): file failed validation: invalid glTF, usually caused by invalid indices or missing required attributes\n");
 }
 
 void CgltfImporterTest::meshValidation() {
@@ -3791,7 +3791,7 @@ void CgltfImporterTest::materialOutOfBounds() {
     std::ostringstream out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR, data.file)));
-    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF\n");
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF, usually caused by invalid indices or missing required attributes\n");
 }
 
 void CgltfImporterTest::materialInvalidAlphaMode() {
@@ -3993,7 +3993,7 @@ void CgltfImporterTest::textureExtensionsOutOfBounds() {
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
         "texture-extensions-invalid-basisu-oob.gltf")));
-    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF\n");
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF, usually caused by invalid indices or missing required attributes\n");
 }
 
 void CgltfImporterTest::textureExtensionsInvalid() {
