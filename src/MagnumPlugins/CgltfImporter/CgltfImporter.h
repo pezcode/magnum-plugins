@@ -28,6 +28,7 @@
 
 /** @file
  * @brief Class @ref Magnum::Trade::CgltfImporter
+ * @m_since_latest_{plugins}
  */
 
 #include <Magnum/Trade/AbstractImporter.h>
@@ -54,6 +55,7 @@ namespace Magnum { namespace Trade {
 
 /**
 @brief Cgltf importer plugin
+@m_since_latest_{plugins}
 
 @m_keywords{GltfImporter}
 
@@ -316,11 +318,10 @@ following defaults have been chosen for this importer:
     for DirectDraw Surface images (`*.dds`),
     [KHR_texture_basisu](https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_texture_basisu/README.md)
     for Khronos Texture 2.0 images (`*.ktx2`) with [Basis Universal](https://github.com/binomialLLC/basis_universal)
-    supercompression, as well as the non-standard `GOOGLE_texture_basis`
-    extension for referencing plain Basis Universal files (`*.basis`).
-
-    The use is the same for all three, simply add a `source` attribute with the
-    image index under the desired `extensions` object:
+    supercompression, as well as the original provisional `GOOGLE_texture_basis`
+    extension for referencing plain Basis Universal files (`*.basis`). There was
+    no formal specification of the extension but the use is like below,
+    [equivalently to Basis own glTF example](https://github.com/BinomialLLC/basis_universal/blob/1cae1d57266e2c95bc011b0bf1ccb9940988c184/webgl/gltf/assets/AgiHqSmall.gltf#L230-L240):
 
     @code{.json}
     {
@@ -328,7 +329,7 @@ following defaults have been chosen for this importer:
         "textures": [
             {
                 "extensions": {
-                    "KHR_texture_basisu": {
+                    "GOOGLE_texture_basis": {
                         "source": 0
                     }
                 }
@@ -336,14 +337,15 @@ following defaults have been chosen for this importer:
         ],
         "images": [
             {
-                "uri": "texture.ktx2"
+                "mimeType": "image/x-basis",
+                "uri": "texture.basis"
             }
         ],
         "extensionsUsed": [
-            "KHR_texture_basisu"
+            "GOOGLE_texture_basis"
         ],
         "extensionsRequired": [
-            "KHR_texture_basisu"
+            "GOOGLE_texture_basis"
         ]
     }
     @endcode
