@@ -40,7 +40,7 @@ add_plugin(CgltfImporter
     CgltfImporter.conf
     CgltfImporter.cpp
     CgltfImporter.h)
-if(BUILD_PLUGINS_STATIC AND BUILD_STATIC_PIC)
+if(MAGNUM_CGLTFIMPORTER_BUILD_STATIC AND BUILD_STATIC_PIC)
     set_target_properties(CgltfImporter PROPERTIES POSITION_INDEPENDENT_CODE ON)
 endif()
 target_include_directories(CgltfImporter PUBLIC
