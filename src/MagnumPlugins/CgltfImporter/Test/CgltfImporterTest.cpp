@@ -188,13 +188,23 @@ struct CgltfImporterTest: TestSuite::Tester {
 /* The external-data.* files are packed in via a resource, filename mapping
    done in resources.conf */
 
+using namespace Containers::Literals;
+using namespace Magnum::Math::Literals;
+
+
 constexpr struct {
     const char* name;
-    const char* suffix;
-    const Containers::ArrayView<const char> shortData;
+    const Containers::StringView data;
+    const char* message;
 } OpenErrorData[]{
-    {"ascii", ".gltf", {"?", 1}},
-    {"binary", ".glb", {"glTF?", 5}}
+    {"short ascii", "?"_s, "data too short"},
+    {"short binary", "glTF?"_s, "data too short"},
+    {"short binary chunk", "glTF\x02\x00\x00\x00\x66\x00\x00\x00"_s, "data too short"},
+    {"unknown binary version", "glTF\x10\x00\x00\x00\x0c\x00\x00\x00"_s, "unknown binary glTF format"},
+    {"unknown binary JSON version", "glTF\x02\x00\x00\x00\x16\x00\x00\x00\x02\x00\x00\x00JSUN{}"_s, "unknown binary glTF format"},
+    {"unknown binary GLB version", "glTF\x02\x00\x00\x00\x22\x00\x00\x00\x02\x00\x00\x00JSON{}\x04\x00\x00\0BIB\x00\xff\xff\xff\xff"_s, "unknown binary glTF format"},
+    {"invalid JSON ascii", "{\"asset\":{\"version\":\"2.0\"}"_s, "invalid JSON"},
+    {"invalid JSON binary", "glTF\x02\x00\x00\x00\x16\x00\x00\x00\x02\x00\x00\x00JSON{{"_s, "invalid JSON"}
 };
 
 constexpr struct {
@@ -557,8 +567,6 @@ constexpr struct {
     {"unknown minor version", "version-unsupported-min.gltf", "unsupported minVersion 2.1, expected 2.0"}
 };
 
-using namespace Magnum::Math::Literals;
-
 CgltfImporterTest::CgltfImporterTest() {
     addInstancedTests({&CgltfImporterTest::open},
                       Containers::arraySize(SingleFileData));
@@ -793,8 +801,8 @@ void CgltfImporterTest::openError() {
     Error redirectError{&out};
 
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
-    CORRADE_VERIFY(!importer->openData(data.shortData));
-    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: data too short\n");
+    CORRADE_VERIFY(!importer->openData(data.data));
+    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::CgltfImporter::openData(): error opening file: {}\n", data.message));
 }
 
 void CgltfImporterTest::openExternalDataOrder() {
