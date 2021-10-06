@@ -125,6 +125,11 @@ the importer instance. In case of images, the files are loaded on-demand inside
 @ref InputFileCallbackPolicy::Close is emitted right after the file is fully
 read.
 
+Error reporting by cgltf is rather rudimentary, resulting in vague error
+messages and no line numbers for several classes of errors, including
+out-of-bounds indices and missing required attributes. If you need more
+detailed errors, consider using the [glTF Validator](https://github.khronos.org/glTF-Validator/).
+
 Import of morph data is not supported at the moment.
 
 @subsection Trade-CgltfImporter-behavior-animation Animation and skin import
