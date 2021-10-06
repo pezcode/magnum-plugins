@@ -61,8 +61,8 @@ corrade_add_test(CgltfImporterTest
     FILES
         # modified version of animation-patching.* from TinyGltfImporter
         # without size mismatch between input and output samplers
-        animation-patching.bin
-        animation-patching.gltf
+        animation-patching-fixed.bin
+        animation-patching-fixed.gltf
         buffer-short-size.glb
         buffer-short-size.gltf
         buffer-short-size-embedded.glb
@@ -107,6 +107,8 @@ corrade_add_test(CgltfImporterTest
         ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-invalid-sampler-oob.gltf
         ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-invalid-output-accessor-oob.gltf
         ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-missing-target-node.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-patching.bin
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-patching.gltf
         ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-splines-sharing.gltf
         ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/camera.gltf
         ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/camera.glb

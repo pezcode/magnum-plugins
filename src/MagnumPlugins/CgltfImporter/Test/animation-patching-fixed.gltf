@@ -83,7 +83,7 @@
     "buffers": [
         {
             "byteLength": 240,
-            "uri": "animation-patching.bin"
+            "uri": "animation-patching-fixed.bin"
         }
     ],
     "nodes": [

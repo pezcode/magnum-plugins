@@ -1405,7 +1405,7 @@ void CgltfImporterTest::animationShortestPathOptimizationEnabled() {
        and picks the smaller size, but cgltf complains about it, nor is it
        allowed by the spec. So we need our own test file. */
     CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
-        "animation-patching.gltf")));
+        "animation-patching-fixed.gltf")));
 
     CORRADE_COMPARE(importer->animationCount(), 2);
     CORRADE_COMPARE(importer->animationName(0), "Quaternion shortest-path patching");
@@ -1454,7 +1454,7 @@ void CgltfImporterTest::animationShortestPathOptimizationDisabled() {
     /* Explicitly disable */
     importer->configuration().setValue("optimizeQuaternionShortestPath", false);
     CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
-        "animation-patching.gltf")));
+        "animation-patching-fixed.gltf")));
 
     CORRADE_COMPARE(importer->animationCount(), 2);
     CORRADE_COMPARE(importer->animationName(0), "Quaternion shortest-path patching");
@@ -1524,7 +1524,7 @@ void CgltfImporterTest::animationQuaternionNormalizationEnabled() {
     /* Enabled by default */
     CORRADE_VERIFY(importer->configuration().value<bool>("normalizeQuaternions"));
     CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
-        "animation-patching.gltf")));
+        "animation-patching-fixed.gltf")));
     CORRADE_COMPARE(importer->animationCount(), 2);
     CORRADE_COMPARE(importer->animationName(1), "Quaternion normalization patching");
 
@@ -1553,7 +1553,7 @@ void CgltfImporterTest::animationQuaternionNormalizationDisabled() {
     /* Explicitly disable */
     CORRADE_VERIFY(importer->configuration().setValue("normalizeQuaternions", false));
     CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
-        "animation-patching.gltf")));
+        "animation-patching-fixed.gltf")));
     CORRADE_COMPARE(importer->animationCount(), 2);
     CORRADE_COMPARE(importer->animationName(1), "Quaternion normalization patching");
 
