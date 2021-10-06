@@ -59,12 +59,16 @@ corrade_add_test(CgltfImporterTest
     ${CgltfImporterTest_RESOURCES}
     LIBRARIES Magnum::Trade
     FILES
+        # modified version of animation-patching.* from TinyGltfImporter
+        # without size mismatch between input and output samplers
         animation-patching.bin
         animation-patching.gltf
         buffer-short-size.glb
         buffer-short-size.gltf
         buffer-short-size-embedded.glb
         buffer-short-size-embedded.gltf
+        # identical to external-data.bin from TinyGltfImporter, but needed
+        # locally for buffer-short-size*
         external-data.bin
         external-data-order.glb
         external-data-order.gltf
@@ -82,7 +86,137 @@ corrade_add_test(CgltfImporterTest
         version-legacy.gltf
         version-supported.gltf
         version-unsupported.gltf
-        version-unsupported-min.gltf)
+        version-unsupported-min.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/empty.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/empty.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/buffer-notfound.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/buffer-notfound.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/buffer-no-uri.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/buffer-no-uri.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/buffer-wrong-size.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/buffer-wrong-size.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation.bin
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-embedded.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-embedded.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-invalid.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-invalid-node-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-invalid-input-accessor-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-invalid-sampler-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-invalid-output-accessor-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-missing-target-node.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/animation-splines-sharing.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/camera.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/camera.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/camera-invalid-type.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/encoded-uris.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/escaped-strings.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/image.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/image.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/image-embedded.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/image-embedded.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/image-buffer.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/image-buffer.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/image-buffer-embedded.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/image-buffer-embedded.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/image-notfound.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/image-basis.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/image-basis.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/image-basis-embedded.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/image-basis-embedded.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/light.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/light.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/light-invalid.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/light-invalid-color-size.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/light-missing-type.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/light-missing-spot.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-common.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-clearcoat.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-invalid-alpha-mode.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-invalid-clearcoat-factor-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-invalid-clearcoat-normal-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-invalid-clearcoat-roughness-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-invalid-emissive-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-invalid-normal-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-invalid-occlusion-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-invalid-pbr-base-color-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-invalid-pbr-diffuse-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-invalid-pbr-metallic-roughness-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-invalid-pbr-specular-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-metallicroughness.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-phong-fallback.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-specularglossiness.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-texcoord-flip.bin
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-texcoord-flip.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-texcoord-flip-unnormalized.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/material-unlit.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh.bin
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-colors.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-colors.bin
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-custom-attributes.bin
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-custom-attributes.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-duplicate-attributes.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-embedded.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-embedded.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-index-accessor-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-invalid.bin
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-invalid.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-invalid-accessor-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-invalid-accessor-short.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-invalid-buffer-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-invalid-bufferview-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-invalid-bufferview-short.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-invalid-mismatching-attribute-count.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-multiple-primitives.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-primitives-types.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-primitives-types.bin
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/mesh-unordered-attributes.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/přívodní-šňůra.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/přívodní-šňůra.bin
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/přívodní-šňůra.png
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/required-extensions.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/required-extensions-unsupported.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene-cycle.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene-cycle-deep.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene-nodefault.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene-nodefault.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene-invalid-camera-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene-invalid-child-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene-invalid-default-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene-invalid-light-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene-invalid-material-oob-multi-primitive.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene-invalid-material-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene-invalid-mesh-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene-invalid-node-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene-invalid-skin-oob-multi-primitive.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/scene-invalid-skin-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/skin-embedded.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/skin-embedded.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/skin-invalid.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/skin-invalid-accessor-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/skin-invalid-joint-oob.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/skin-no-joints.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/skin.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/skin.bin
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/skin.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/object-transformation.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/object-transformation.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/object-transformation-patching.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/texture.basis
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/texture.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/texture.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/texture.png
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/texture-default-sampler.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/texture-default-sampler.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/texture-empty-sampler.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/texture-empty-sampler.glb
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/texture-invalid.gltf
+        ${PROJECT_SOURCE_DIR}/src/MagnumPlugins/TinyGltfImporter/Test/texture-missing-source.gltf)
 target_include_directories(CgltfImporterTest PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>)
 if(MAGNUM_CGLTFIMPORTER_BUILD_STATIC)
     target_link_libraries(CgltfImporterTest PRIVATE CgltfImporter)
