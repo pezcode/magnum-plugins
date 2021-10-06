@@ -171,8 +171,7 @@ std::string decodeUri(Containers::StringView uri) {
     std::string decoded = uri;
     cgltf_decode_uri(&decoded[0]);
     decoded.resize(std::strlen(decoded.data()));
-    /** @todo Replace backslash with forward slash? AssimpImporter normalizes
-        paths that way */
+
     return decoded;
 }
 
@@ -560,6 +559,7 @@ void CgltfImporter::doOpenData(const Containers::ArrayView<const char> data) {
             case cgltf_result_data_too_short:
                 error = "data too short";
                 break;
+            /* LCOV_EXCL_START */
             /* Only returned from cgltf's default file callback */
             case cgltf_result_file_not_found:
             /* Only returned by cgltf_load_buffer_base64 and cgltf's default
@@ -568,7 +568,8 @@ void CgltfImporter::doOpenData(const Containers::ArrayView<const char> data) {
             /* We passed a nullptr somewhere, this should never happen */
             case cgltf_result_invalid_options:
             default:
-                CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
+                CORRADE_INTERNAL_ASSERT_UNREACHABLE();
+            /* LCOV_EXCL_STOP */
         }
 
         Error{} << "Trade::CgltfImporter::openData(): error opening file:" << error;
@@ -630,20 +631,20 @@ void CgltfImporter::doOpenData(const Containers::ArrayView<const char> data) {
 
     /* Find cycles in node tree */
     for(std::size_t i = 0; i != _d->data->nodes_count; ++i) {
-		const cgltf_node* p1 = _d->data->nodes[i].parent;
-		const cgltf_node* p2 = p1 ? p1->parent : nullptr;
+        const cgltf_node* p1 = _d->data->nodes[i].parent;
+        const cgltf_node* p2 = p1 ? p1->parent : nullptr;
 
-		while(p1 && p2) {
+        while(p1 && p2) {
             if(p1 == p2) {
                 Error{} << "Trade::CgltfImporter::openData(): node tree contains cycle starting at node" << i;
                 doClose();
                 return;
             }
 
-			p1 = p1->parent;
-			p2 = p2->parent ? p2->parent->parent : nullptr;
-		}
-	}
+            p1 = p1->parent;
+            p2 = p2->parent ? p2->parent->parent : nullptr;
+        }
+    }
 
     /* Treat meshes with multiple primitives as separate meshes. Each mesh gets
        duplicated as many times as is the size of the primitives array. */
