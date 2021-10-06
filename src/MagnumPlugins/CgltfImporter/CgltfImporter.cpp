@@ -431,15 +431,11 @@ Containers::StringView CgltfImporter::Document::decodeString(Containers::StringV
     /* Skip any processing until the first escape character */
     const std::size_t start = escape.data() - str.data();
 
-    const std::size_t size = str.size();
-    Containers::Array<char> decoded{size + 1};
-    Utility::copy(str, decoded.prefix(size));
-    decoded.back() = '\0';
-
+    Containers::String decoded{str};
     cgltf_decode_string(decoded.data() + start);
 
-    const std::size_t decodedSize = strlen(decoded.data() + start) + start;
-    CORRADE_INTERNAL_ASSERT(decodedSize < size);
+    const std::size_t decodedSize = std::strlen(decoded.data() + start) + start;
+    CORRADE_INTERNAL_ASSERT(decodedSize < str.size());
 
     return decodedStrings.emplace(str.data(), Containers::String{decoded.prefix(decodedSize)}).first->second;
 }
