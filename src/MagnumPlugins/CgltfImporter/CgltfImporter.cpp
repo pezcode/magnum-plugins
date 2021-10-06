@@ -1265,14 +1265,7 @@ Containers::Optional<SceneData> CgltfImporter::doScene(UnsignedInt id) {
     children.reserve(scene.nodes_count);
     for(UnsignedInt i = 0; i != scene.nodes_count; ++i) {
         const cgltf_node* node = scene.nodes[i];
-        CORRADE_INTERNAL_ASSERT(node);
-
         const UnsignedInt nodeId = node - _d->data->nodes;
-        /** @todo Test */
-        if(node->parent) {
-            Error{} << "Trade::CgltfImporter::scene(): node" << nodeId << "is not a root node";
-            return Containers::NullOpt;
-        }
         children.push_back(nodeId);
     }
 

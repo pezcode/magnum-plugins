@@ -111,6 +111,7 @@ struct CgltfImporterTest: TestSuite::Tester {
     void sceneEmpty();
     void sceneNoDefault();
     void sceneOutOfBounds();
+    void sceneInvalid();
     void sceneCycle();
 
     void objectTransformation();
@@ -431,6 +432,14 @@ constexpr struct {
 constexpr struct {
     const char* name;
     const char* file;
+} SceneInvalidData[]{
+    {"scene node has parent", "scene-invalid-child-not-root.gltf"},
+    {"node has multiple parents", "scene-invalid-multiple-parents.gltf"}
+};
+
+constexpr struct {
+    const char* name;
+    const char* file;
 } SceneCycleData[]{
     {"child is self", "scene-cycle.gltf"},
     {"great-grandchild is self", "scene-cycle-deep.gltf"}
@@ -623,6 +632,9 @@ CgltfImporterTest::CgltfImporterTest() {
 
     addInstancedTests({&CgltfImporterTest::sceneOutOfBounds},
         Containers::arraySize(SceneOutOfBoundsData));
+
+    addInstancedTests({&CgltfImporterTest::sceneInvalid},
+        Containers::arraySize(SceneInvalidData));
 
     addInstancedTests({&CgltfImporterTest::sceneCycle},
         Containers::arraySize(SceneCycleData));
@@ -1989,6 +2001,21 @@ void CgltfImporterTest::sceneOutOfBounds() {
     std::ostringstream out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR, data.file)));
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF, usually caused by invalid indices or missing required attributes\n");
+}
+
+void CgltfImporterTest::sceneInvalid() {
+    auto&& data = SceneInvalidData[testCaseInstanceId()];
+    setTestCaseDescription(data.name);
+
+    Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
+
+    /* For some reason node relationships are checked in cgltf_parse and not in
+       cgltf_validate. Cycles are checked in cgltf_validate again. */
+
+    std::ostringstream out;
+    Error redirectError{&out};
+    CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR, data.file)));
     CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF, usually caused by invalid indices or missing required attributes\n");
 }
 

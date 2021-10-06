@@ -78,6 +78,8 @@ corrade_add_test(CgltfImporterTest
         mesh-invalid-skin-attributes.gltf
         mesh-skin-attributes.bin
         mesh-skin-attributes.gltf
+        scene-invalid-child-not-root.gltf
+        scene-invalid-multiple-parents.gltf
         texture-extensions-invalid-basisu-oob.gltf
         texture-extensions-invalid.gltf
         texture-extensions.gltf
