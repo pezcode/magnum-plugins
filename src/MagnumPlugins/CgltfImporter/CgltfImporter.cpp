@@ -184,14 +184,14 @@ struct JsonToken {
 Containers::Array<JsonToken> parseJson(Containers::StringView str) {
     jsmn_parser parser{0, 0, 0};
     Int numTokens = jsmn_parse(&parser, str.data(), str.size(), nullptr, 0);
-    if(numTokens <= 0)
-        return {};
+    /* All JSON strings we're parsing come from cgltf and should already have
+       passed jsmn parsing */
+    CORRADE_INTERNAL_ASSERT(numTokens >= 0);
 
     Containers::Array<jsmntok_t> jsmnTokens{std::size_t(numTokens)};
     jsmn_init(&parser);
     numTokens = jsmn_parse(&parser, str.data(), str.size(), jsmnTokens.data(), numTokens);
-    if(std::size_t(numTokens) != jsmnTokens.size())
-        return {};
+    CORRADE_INTERNAL_ASSERT(std::size_t(numTokens) == jsmnTokens.size());
 
     Containers::Array<JsonToken> tokens{jsmnTokens.size()};
     for(Int i = 0; i != numTokens; ++i) {
