@@ -138,8 +138,6 @@ struct CgltfImporterTest: TestSuite::Tester {
     void meshInvalid();
     void meshInvalidSkinAttributes();
     void meshInvalidTypes();
-    void meshInvalidIndexComponentType();
-    void meshValidation();
 
     void materialPbrMetallicRoughness();
     void materialPbrSpecularGlossiness();
@@ -350,30 +348,34 @@ constexpr struct {
 
 constexpr struct {
     const char* name;
+    const char* file;
     const char* message;
 } MeshInvalidData[]{
-    {"invalid primitive", "unrecognized primitive 666"},
-    {"unexpected position type", "unexpected POSITION type 2"},
-    {"unsupported position component type", "unsupported POSITION component type unnormalized VertexFormat::UnsignedInt"},
-    {"unexpected normal type", "unexpected NORMAL type 2"},
-    {"unsupported normal component type", "unsupported NORMAL component type unnormalized VertexFormat::UnsignedInt"},
-    {"unexpected tangent type", "unexpected TANGENT type 3"},
-    {"unsupported tangent component type", "unsupported TANGENT component type unnormalized VertexFormat::Byte"},
-    {"unexpected texcoord type", "unexpected TEXCOORD type 3"},
-    {"unsupported texcoord component type", "unsupported TEXCOORD component type normalized VertexFormat::UnsignedInt"},
-    {"unexpected color type", "unexpected COLOR type 2"},
-    {"unsupported color component type", "unsupported COLOR component type unnormalized VertexFormat::Byte"},
-    {"unexpected object id type", "unexpected object ID type 2"},
-    {"unsupported object id component type", "unsupported object ID component type unnormalized VertexFormat::Short"},
-    {"unexpected index type", "unexpected index type 2"},
-    {"unsupported index component type", "unexpected index component type 3"},
-    {"normalized index type", "index type can't be normalized"},
-    {"strided index view", "index bufferView is not contiguous"},
-    {"accessor type size larger than buffer stride", "16-byte type defined by accessor 10 can't fit into bufferView 0 stride of 12"},
-    {"normalized float", "floating-point component types can't be normalized"},
-    {"non-normalized byte matrix", "unsupported matrix component type unnormalized VertexFormat::Byte"},
-    {"sparse accessor", "accessor 14 is using sparse storage, which is unsupported"},
-    {"no bufferview", "accessor 15 has no bufferView"}
+    {"invalid primitive", "mesh-invalid.gltf", "unrecognized primitive 666"},
+    {"different vertex count for each accessor", "mesh-invalid-mismatching-attribute-count.gltf", "mismatched vertex count for attribute TEXCOORD, expected 3 but got 4"},
+    {"unexpected position type", "mesh-invalid.gltf", "unexpected POSITION type 2"},
+    {"unsupported position component type", "mesh-invalid.gltf", "unsupported POSITION component type unnormalized VertexFormat::UnsignedInt"},
+    {"unexpected normal type", "mesh-invalid.gltf", "unexpected NORMAL type 2"},
+    {"unsupported normal component type", "mesh-invalid.gltf", "unsupported NORMAL component type unnormalized VertexFormat::UnsignedInt"},
+    {"unexpected tangent type", "mesh-invalid.gltf", "unexpected TANGENT type 3"},
+    {"unsupported tangent component type", "mesh-invalid.gltf", "unsupported TANGENT component type unnormalized VertexFormat::Byte"},
+    {"unexpected texcoord type", "mesh-invalid.gltf", "unexpected TEXCOORD type 3"},
+    {"unsupported texcoord component type", "mesh-invalid.gltf", "unsupported TEXCOORD component type normalized VertexFormat::UnsignedInt"},
+    {"unexpected color type", "mesh-invalid.gltf", "unexpected COLOR type 2"},
+    {"unsupported color component type", "mesh-invalid.gltf", "unsupported COLOR component type unnormalized VertexFormat::Byte"},
+    {"unexpected object id type", "mesh-invalid.gltf", "unexpected object ID type 2"},
+    {"unsupported object id component type", "mesh-invalid.gltf", "unsupported object ID component type unnormalized VertexFormat::Short"},
+    {"unexpected index type", "mesh-invalid.gltf", "unexpected index type 2"},
+    {"unsupported index component type", "mesh-invalid.gltf", "unexpected index component type 3"},
+    {"normalized index type", "mesh-invalid.gltf", "index type can't be normalized"},
+    {"strided index view", "mesh-invalid.gltf", "index buffer view is not contiguous"},
+    {"accessor type size larger than buffer stride", "mesh-invalid.gltf", "16-byte type defined by accessor 10 can't fit into buffer view 0 stride of 12"},
+    {"normalized float", "mesh-invalid.gltf", "floating-point component types can't be normalized"},
+    {"non-normalized byte matrix", "mesh-invalid.gltf", "unsupported matrix component type unnormalized VertexFormat::Byte"},
+    {"sparse accessor", "mesh-invalid.gltf", "accessor 14 is using sparse storage, which is unsupported"},
+    {"no bufferview", "mesh-invalid.gltf", "accessor 15 has no buffer view"},
+    {"accessor count larger than buffer size", "mesh-invalid-accessor-short.gltf", "accessor 0 needs 33 bytes but buffer view 0 has only 32"},
+    {"buffer view range out of bounds", "mesh-invalid-bufferview-short.gltf", "buffer view 0 needs 72 bytes but buffer 0 has only 68"}
 };
 
 constexpr struct {
@@ -393,16 +395,6 @@ constexpr struct {
 } MeshInvalidTypesData[]{
     {"unknown type", "mesh-invalid-accessor-type.gltf", "attribute _THING has an invalid type"},
     {"unknown component type", "mesh-invalid-accessor-component-type.gltf", "attribute _THING has an invalid component type"}
-};
-
-constexpr struct {
-    const char* name;
-    const char* file;
-    const char* message;
-} MeshValidationData[]{
-    {"accessor count larger than buffer size", "mesh-invalid-accessor-short.gltf", "data too short"},
-    {"buffer view range out of bounds", "mesh-invalid-bufferview-short.gltf", "data too short"},
-    {"different vertex count for each accessor", "mesh-invalid-mismatching-attribute-count.gltf", "invalid glTF, usually caused by invalid indices or missing required attributes"}
 };
 
 constexpr struct {
@@ -681,11 +673,6 @@ CgltfImporterTest::CgltfImporterTest() {
     addInstancedTests({&CgltfImporterTest::meshInvalidTypes},
         Containers::arraySize(MeshInvalidTypesData));
 
-    addTests({&CgltfImporterTest::meshInvalidIndexComponentType});
-
-    addInstancedTests({&CgltfImporterTest::meshValidation},
-        Containers::arraySize(MeshValidationData));
-
     addTests({&CgltfImporterTest::materialPbrMetallicRoughness,
               &CgltfImporterTest::materialPbrSpecularGlossiness,
               &CgltfImporterTest::materialCommon,
@@ -952,22 +939,14 @@ void CgltfImporterTest::openExternalDataTooShort() {
 
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
 
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
+        "buffer-short-size" + std::string{data.suffix})));
+    CORRADE_COMPARE(importer->meshCount(), 1);
+
     std::ostringstream out;
     Error redirectError{&out};
-
-    if(Containers::StringView{data.suffix}.hasSuffix(".glb")) {
-        /* GLB bin chunk size is checked by cgltf */
-        CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
-            "buffer-short-size" + std::string{data.suffix})));
-        CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): file failed validation: data too short\n");
-    } else {
-        CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
-            "buffer-short-size" + std::string{data.suffix})));
-        CORRADE_COMPARE(importer->meshCount(), 1);
-
-        CORRADE_VERIFY(!importer->mesh(0));
-        CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::mesh(): buffer 0 is too short, expected 24 bytes, but got 12\n");
-    }
+    CORRADE_VERIFY(!importer->mesh(0));
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::mesh(): buffer 0 is too short, expected 24 bytes but got 12\n");
 }
 
 void CgltfImporterTest::openExternalDataNoUri() {
@@ -1207,13 +1186,15 @@ void CgltfImporterTest::animationInvalidInterpolation() {
 void CgltfImporterTest::animationMismatchingCount() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
 
-    /* Different input/output accessor counts are caught by cgltf_validate.
-       This TinyGltfImporter test file does that, so we repurpose it. */
+    /* Different input/output accessor counts are not allowed. This
+       TinyGltfImporter test file has them, so we repurpose it. */
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR,
+        "animation-patching.gltf")));
+
     std::ostringstream out;
     Error redirectError{&out};
-    CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR,
-        "animation-patching.gltf")));
-    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): file failed validation: data too short\n");
+    CORRADE_VERIFY(!importer->animation("Quaternion normalization patching"));
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::animation(): target track size doesn't match time track size, expected 3 but got 9\n");
 }
 
 void CgltfImporterTest::animationMissingTargetNode() {
@@ -2020,7 +2001,7 @@ void CgltfImporterTest::sceneCycle() {
     std::ostringstream out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR, data.file)));
-    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): file failed validation: invalid glTF, usually caused by invalid indices or missing required attributes\n");
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): node tree contains cycle starting at node 0\n");
 }
 
 void CgltfImporterTest::objectTransformation() {
@@ -3080,8 +3061,7 @@ void CgltfImporterTest::meshInvalid() {
 
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
 
-    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR,
-        "mesh-invalid.gltf")));
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR, data.file)));
 
     std::ostringstream out;
     Error redirectError{&out};
@@ -3116,34 +3096,6 @@ void CgltfImporterTest::meshInvalidTypes() {
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->mesh(data.name));
     CORRADE_COMPARE(out.str(), Utility::formatString("Trade::CgltfImporter::mesh(): {}\n", data.message));
-}
-
-void CgltfImporterTest::meshInvalidIndexComponentType() {
-    Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
-
-    /* cgltf_validate checks index accessor types, but only if the mesh has any
-       attributes. The test case in mesh-invalid.gltf has no attributes, so it
-       only tests our own check. This one tests the result of cgltf_validate.
-       This is all a bit shitty since the check is now duplicated and occurs in
-       different functions (openData vs. mesh) and with different error text. */
-
-    std::ostringstream out;
-    Error redirectError{&out};
-    CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
-        "mesh-invalid-index-component-type.gltf")));
-    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): file failed validation: invalid glTF, usually caused by invalid indices or missing required attributes\n");
-}
-
-void CgltfImporterTest::meshValidation() {
-    auto&& data = MeshValidationData[testCaseInstanceId()];
-    setTestCaseDescription(data.name);
-
-    Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
-
-    std::ostringstream out;
-    Error redirectError{&out};
-    CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR, data.file)));
-    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::CgltfImporter::openData(): file failed validation: {}\n", data.message));
 }
 
 void CgltfImporterTest::materialPbrMetallicRoughness() {

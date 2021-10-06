@@ -116,10 +116,6 @@ std::size_t elementSize(const cgltf_accessor* accessor) {
 
 bool checkAccessor(const cgltf_data* data, const char* const function, const cgltf_accessor* accessor) {
     CORRADE_INTERNAL_ASSERT(accessor);
-
-    /* Cgltf checks bounds of accessors and buffer views in cgltf_parse and
-       stores pointers directly in cgltf_data. Missing optional entries become
-       nullptr. */
     const UnsignedInt accessorId = accessor - data->accessors;
 
     /** @todo Validate alignment rules, calculate correct stride in accessorView():
@@ -129,24 +125,35 @@ bool checkAccessor(const cgltf_data* data, const char* const function, const cgl
         Error{} << "Trade::CgltfImporter::" << Debug::nospace << function << Debug::nospace << "(): accessor" << accessorId << "is using sparse storage, which is unsupported";
         return false;
     }
-    /* Bufferviews are optional in accessors, we're supposed to fill the view
+    /* Buffer views are optional in accessors, we're supposed to fill the view
        with zeros. Only makes sense with sparse data and we don't support that. */
     if(!accessor->buffer_view) {
-        Error{} << "Trade::CgltfImporter::" << Debug::nospace << function << Debug::nospace << "(): accessor" << accessorId << "has no bufferView";
+        Error{} << "Trade::CgltfImporter::" << Debug::nospace << function << Debug::nospace << "(): accessor" << accessorId << "has no buffer view";
         return false;
     }
 
     const cgltf_buffer_view* bufferView = accessor->buffer_view;
     const UnsignedInt bufferViewId = bufferView - data->buffer_views;
+    const cgltf_buffer* buffer = bufferView->buffer;
 
-    const std::size_t size = elementSize(accessor);
-    /* Cgltf copies the bufferview stride into the accessor. If that's zero it
-       calculates the size, but it doesn't check if any non-zero stride fits
-       the calculated size. cgltf_validate, however, does check if there's
-       enough space in the bufferview for the accessor, as well as enough
-       space in the buffer for the bufferview. */
-    if(accessor->stride < size) {
-        Error{} << "Trade::CgltfImporter::" << Debug::nospace << function << Debug::nospace << "():" << size << Debug::nospace << "-byte type defined by accessor" << accessorId << "can't fit into bufferView" << bufferViewId << "stride of" << accessor->stride;
+    const std::size_t typeSize = elementSize(accessor);
+    const std::size_t requiredBufferViewSize = accessor->offset + accessor->stride*(accessor->count - 1) + typeSize;
+    if(bufferView->size < requiredBufferViewSize) {
+        Error{} << "Trade::CgltfImporter::" << Debug::nospace << function << Debug::nospace << "(): accessor" << accessorId << "needs" << requiredBufferViewSize << "bytes but buffer view" << bufferViewId << "has only" << bufferView->size;
+        return false;
+    }
+
+    const std::size_t requiredBufferSize = bufferView->offset + bufferView->size;
+    if(buffer->size < requiredBufferSize) {
+        const UnsignedInt bufferId = buffer - data->buffers;
+        Error{} << "Trade::CgltfImporter::" << Debug::nospace << function << Debug::nospace << "(): buffer view" << bufferViewId << "needs" << requiredBufferSize << "bytes but buffer" << bufferId << "has only" << buffer->size;
+        return false;
+    }
+
+    /* Cgltf copies the bufferview stride into the accessor. If that's zero, it
+       copies the element size into the stride. */
+    if(accessor->stride < typeSize) {
+        Error{} << "Trade::CgltfImporter::" << Debug::nospace << function << Debug::nospace << "():" << typeSize << Debug::nospace << "-byte type defined by accessor" << accessorId << "can't fit into buffer view" << bufferViewId << "stride of" << accessor->stride;
         return false;
     }
 
@@ -385,7 +392,7 @@ bool CgltfImporter::Document::loadBuffer(UnsignedInt id, const char* const funct
     if(view.size() < buffer.size) {
         Error{} << "Trade::CgltfImporter::" << Debug::nospace << function << Debug::nospace << "():" <<
             "buffer" << id << "is too short, expected" << buffer.size <<
-            "bytes, but got" << view.size();
+            "bytes but got" << view.size();
         return false;
     }
 
@@ -517,38 +524,54 @@ void CgltfImporter::doOpenData(const Containers::ArrayView<const char> data) {
     _d->options.file.user_data = this;
 
     /* Parse file, without loading or decoding buffers/images */
-    cgltf_result result = cgltf_parse(&_d->options, _d->fileData.data(), _d->fileData.size(), &_d->data);
+    const cgltf_result result = cgltf_parse(&_d->options, _d->fileData.data(), _d->fileData.size(), &_d->data);
 
-    auto resultString = [](cgltf_result result) {
+    /* A general note on error checking in cgltf:
+       - cgltf_parse fails if any index is out of bounds, mandatory or not
+       - cgltf_parse fails if a mandatory property is missing
+       - optional properties are set to the spec-mandated default value (if
+         there is one), 0 or nullptr (if they're indices).
+
+       We're not using cgltf_validate() because the error granularity is rather
+       underwhelming. All of its relevant checks are implemented on our side,
+       allowing us to delay them to when they're needed, e.g. accessor and
+       buffer size. */
+    if(result != cgltf_result_success) {
+        const char* error{};
         switch(result) {
             /* This can also be returned for arrays with too many items before
                any allocation happens, so we can't quite ignore it. Rather
                impossible to test, however. */
-            case cgltf_result_out_of_memory:  return "out of memory";
-            case cgltf_result_unknown_format: return "unknown binary glTF format";
-            case cgltf_result_invalid_json:   return "invalid JSON";
-            case cgltf_result_invalid_gltf:   return "invalid glTF, usually caused by invalid indices or missing required attributes";
-            case cgltf_result_legacy_gltf:    return "legacy glTF version";
-            case cgltf_result_data_too_short: return "data too short";
+            case cgltf_result_out_of_memory:
+                error = "out of memory";
+                break;
+            case cgltf_result_unknown_format:
+                error = "unknown binary glTF format";
+                break;
+            case cgltf_result_invalid_json:
+                error = "invalid JSON";
+                break;
+            case cgltf_result_invalid_gltf:
+                error = "invalid glTF, usually caused by invalid indices or missing required attributes";
+                break;
+            case cgltf_result_legacy_gltf:
+                error = "legacy glTF version";
+                break;
+            case cgltf_result_data_too_short:
+                error = "data too short";
+                break;
             /* Only returned from cgltf's default file callback */
             case cgltf_result_file_not_found:
-                CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
             /* Only returned by cgltf_load_buffer_base64 and cgltf's default
                file callback */
             case cgltf_result_io_error:
-                CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
-            /* This should never happen, it means we passed a nullptr somewhere */
+            /* We passed a nullptr somewhere, this should never happen */
             case cgltf_result_invalid_options:
-                CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
-            case cgltf_result_success:
+            default:
                 CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
         }
 
-        CORRADE_ASSERT_UNREACHABLE("Trade::CgltfImporter::openData(): unknown cgltf_result value" << result, "unknown error"); /* LCOV_EXCL_LINE */
-    };
-
-    if(result != cgltf_result_success) {
-        Error{} << "Trade::CgltfImporter::openData(): error opening file:" << resultString(result);
+        Error{} << "Trade::CgltfImporter::openData(): error opening file:" << error;
         doClose();
         return;
     }
@@ -567,20 +590,6 @@ void CgltfImporter::doOpenData(const Containers::ArrayView<const char> data) {
     }
     if(asset.version && !Containers::StringView{asset.version}.hasPrefix("2."_s)) {
         Error{} << "Trade::CgltfImporter::openData(): unsupported version" << asset.version << Debug::nospace << ", expected 2.x";
-        doClose();
-        return;
-    }
-
-    /* This performs some extra validation beyond what's checked in cgltf_parse,
-       mostly buffer ranges.
-       A general note on error checking in cgltf:
-       - cgltf_parse fails if any index is out of bounds, mandatory or not
-       - cgltf_parse fails if a mandatory property is missing
-       - optional properties are set to the spec-mandated default value (if
-         there is one), 0 or nullptr (if they're indices) */
-    result = cgltf_validate(_d->data);
-    if(result != cgltf_result_success) {
-        Error{} << "Trade::CgltfImporter::openData(): file failed validation:" << resultString(result);
         doClose();
         return;
     }
@@ -620,10 +629,22 @@ void CgltfImporter::doOpenData(const Containers::ArrayView<const char> data) {
         }
     }
 
-    _d->open = true;
+    /* Find cycles in node tree */
+    for(std::size_t i = 0; i != _d->data->nodes_count; ++i) {
+		const cgltf_node* p1 = _d->data->nodes[i].parent;
+		const cgltf_node* p2 = p1 ? p1->parent : nullptr;
 
-    /* Buffers are loaded on demand, but we need to prepare the storage array */
-    _d->bufferData = Containers::Array<Containers::Array<char>>{_d->data->buffers_count};
+		while(p1 && p2) {
+            if(p1 == p2) {
+                Error{} << "Trade::CgltfImporter::openData(): node tree contains cycle starting at node" << i;
+                doClose();
+                return;
+            }
+
+			p1 = p1->parent;
+			p2 = p2->parent ? p2->parent->parent : nullptr;
+		}
+	}
 
     /* Treat meshes with multiple primitives as separate meshes. Each mesh gets
        duplicated as many times as is the size of the primitives array. */
@@ -711,6 +732,11 @@ void CgltfImporter::doOpenData(const Containers::ArrayView<const char> data) {
             }
         }
     }
+
+    _d->open = true;
+
+    /* Buffers are loaded on demand, but we need to prepare the storage array */
+    _d->bufferData = Containers::Array<Containers::Array<char>>{_d->data->buffers_count};
 
     /* Name maps are lazy-loaded because these might not be needed every time */
 }
@@ -913,6 +939,12 @@ Containers::Optional<AnimationData> CgltfImporter::doAnimation(UnsignedInt id) {
                 .prefix(outputDataFound->second.src.size()[0]*
                         outputDataFound->second.src.size()[1]);
             const cgltf_accessor*& timeTrackUsed = outputDataFound->second.timeTrack;
+
+            const std::size_t valuesPerKey = interpolation == Animation::Interpolation::Spline ? 3 : 1;
+            if(input->count*valuesPerKey != output->count) {
+                Error{} << "Trade::CgltfImporter::animation(): target track size doesn't match time track size, expected" << output->count << "but got" << input->count*valuesPerKey;
+                return Containers::NullOpt;
+            }
 
             /* Translation */
             if(channel.target_path == cgltf_animation_path_type_translation) {
@@ -1232,7 +1264,15 @@ Containers::Optional<SceneData> CgltfImporter::doScene(UnsignedInt id) {
     std::vector<UnsignedInt> children;
     children.reserve(scene.nodes_count);
     for(UnsignedInt i = 0; i != scene.nodes_count; ++i) {
-        const UnsignedInt nodeId = scene.nodes[i] - _d->data->nodes;
+        const cgltf_node* node = scene.nodes[i];
+        CORRADE_INTERNAL_ASSERT(node);
+
+        const UnsignedInt nodeId = node - _d->data->nodes;
+        /** @todo Test */
+        if(node->parent) {
+            Error{} << "Trade::CgltfImporter::scene(): node" << nodeId << "is not a root node";
+            return Containers::NullOpt;
+        }
         children.push_back(nodeId);
     }
 
@@ -1876,7 +1916,7 @@ Containers::Optional<MeshData> CgltfImporter::doMesh(const UnsignedInt id, Unsig
             return Containers::NullOpt;
 
         if(!src->isContiguous()) {
-            Error{} << "Trade::CgltfImporter::mesh(): index bufferView is not contiguous";
+            Error{} << "Trade::CgltfImporter::mesh(): index buffer view is not contiguous";
             return Containers::NullOpt;
         }
 

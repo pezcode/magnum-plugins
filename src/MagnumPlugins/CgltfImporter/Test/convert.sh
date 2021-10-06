@@ -13,7 +13,7 @@ for i in buffer-short-size; do
 done
 
 # gltf -> glb
-for i in buffer-short-size; do
+for i in buffer-short-size buffer-short-size-embedded; do
     ../../TinyGltfImporter/Test/gltf2glb.py ${i}.gltf
 done
 
