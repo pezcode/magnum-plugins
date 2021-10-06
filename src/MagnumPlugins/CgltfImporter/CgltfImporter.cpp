@@ -610,10 +610,9 @@ void CgltfImporter::doOpenData(const Containers::ArrayView<const char> data) {
         "MSFT_texture_dds"_s
     };
 
-    /* M*N loop should be okay here, the list should usually have no or very
-       few entries. Alternatively, a binary search would work but statically
-       asserting that the array is sorted is tricky because StringView has no
-       constexpr comparison operators. */
+    /* M*N loop should be okay here, extensionsRequired should usually have no or
+       very few entries. Consider binary search if the list of supported
+       extensions reaches a few dozen. */
     for(Containers::StringView required: Containers::arrayView(_d->data->extensions_required, _d->data->extensions_required_count)) {
         bool found = false;
         for(const auto& supported: supportedExtensions) {
@@ -687,8 +686,8 @@ void CgltfImporter::doOpenData(const Containers::ArrayView<const char> data) {
     for(const cgltf_mesh& mesh: Containers::arrayView(_d->data->meshes, _d->data->meshes_count)) {
         for(const cgltf_primitive& primitive: Containers::arrayView(mesh.primitives, mesh.primitives_count)) {
             for(const cgltf_attribute& attribute: Containers::arrayView(primitive.attributes, primitive.attributes_count)) {
-                if (attribute.type == cgltf_attribute_type_texcoord) {
-                    if (!_d->textureCoordinateYFlipInMaterial) {
+                if(attribute.type == cgltf_attribute_type_texcoord) {
+                    if(!_d->textureCoordinateYFlipInMaterial) {
                         const cgltf_component_type type = attribute.data->component_type;
                         const bool normalized = attribute.data->normalized;
                         if(type == cgltf_component_type_r_8 ||
