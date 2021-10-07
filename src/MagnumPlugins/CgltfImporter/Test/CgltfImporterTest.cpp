@@ -164,6 +164,7 @@ struct CgltfImporterTest: TestSuite::Tester {
     void imageEmbedded();
     void imageExternal();
     void imageExternalNotFound();
+    void imageExternalBufferNotFound();
     void imageExternalNoPathNoCallback();
     void imageNoData();
 
@@ -737,6 +738,7 @@ CgltfImporterTest::CgltfImporterTest() {
                       Containers::arraySize(ImageExternalData));
 
     addTests({&CgltfImporterTest::imageExternalNotFound,
+              &CgltfImporterTest::imageExternalBufferNotFound,
               &CgltfImporterTest::imageExternalNoPathNoCallback,
               &CgltfImporterTest::imageNoData});
 
@@ -4075,6 +4077,17 @@ void CgltfImporterTest::imageExternalNotFound() {
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->image2D(0));
     CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::openFile(): cannot open file /nonexistent.png\n");
+}
+
+void CgltfImporterTest::imageExternalBufferNotFound() {
+    Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR, "image-buffer-notfound.gltf")));
+    CORRADE_COMPARE(importer->image2DCount(), 1);
+
+    std::ostringstream out;
+    Error redirectError{&out};
+    CORRADE_VERIFY(!importer->image2D(0));
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::image2D(): error opening file: /nonexistent.bin : file not found\n");
 }
 
 void CgltfImporterTest::imageExternalNoPathNoCallback() {
