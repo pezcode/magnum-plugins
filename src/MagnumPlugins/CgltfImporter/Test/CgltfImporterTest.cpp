@@ -79,6 +79,7 @@ struct CgltfImporterTest: TestSuite::Tester {
 
     void requiredExtensions();
     void requiredExtensionsUnsupported();
+    void requiredExtensionsUnsupportedDisabled();
 
     void animation();
     void animationOutOfBounds();
@@ -590,7 +591,8 @@ CgltfImporterTest::CgltfImporterTest() {
                       Containers::arraySize(InvalidUriData));
 
     addTests({&CgltfImporterTest::requiredExtensions,
-              &CgltfImporterTest::requiredExtensionsUnsupported});
+              &CgltfImporterTest::requiredExtensionsUnsupported,
+              &CgltfImporterTest::requiredExtensionsUnsupportedDisabled});
 
     addInstancedTests({&CgltfImporterTest::animation},
                       Containers::arraySize(MultiFileData));
@@ -1013,6 +1015,8 @@ void CgltfImporterTest::requiredExtensions() {
 
 void CgltfImporterTest::requiredExtensionsUnsupported() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
+    /* Disabled by default */
+    CORRADE_VERIFY(!importer->configuration().value<bool>("ignoreRequiredExtensions"));
 
     std::ostringstream out;
     Error redirectError{&out};
@@ -1020,6 +1024,14 @@ void CgltfImporterTest::requiredExtensionsUnsupported() {
     CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR,
         "required-extensions-unsupported.gltf")));
     CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): required extension EXT_lights_image_based not supported\n");
+}
+
+void CgltfImporterTest::requiredExtensionsUnsupportedDisabled() {
+    Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
+    CORRADE_VERIFY(importer->configuration().setValue("ignoreRequiredExtensions", true));
+
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR,
+        "required-extensions-unsupported.gltf")));
 }
 
 void CgltfImporterTest::animation() {

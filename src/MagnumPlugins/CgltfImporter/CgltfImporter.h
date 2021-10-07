@@ -130,6 +130,12 @@ messages and no line numbers for several classes of errors, including
 out-of-bounds indices and missing required attributes. If you need more
 detailed errors, consider using the [glTF Validator](https://github.khronos.org/glTF-Validator/).
 
+The content of the global [`extensionsRequired`](https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#specifying-extensions)
+array is checked against all extensions supported by the plugin. If a glTF file
+requires an unknown extension, the import will fail. This behaviour can be
+disabled with the @cb{.ini} ignoreRequiredExtensions @ce option, see
+@ref Trade-CgltfImporter-configuration "below".
+
 Import of morph data is not supported at the moment.
 
 @subsection Trade-CgltfImporter-behavior-animation Animation and skin import

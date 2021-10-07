@@ -450,6 +450,7 @@ namespace {
 
 void fillDefaultConfiguration(Utility::ConfigurationGroup& conf) {
     /** @todo horrible workaround, fix this properly */
+    conf.setValue("ignoreRequiredExtensions", false);
     conf.setValue("optimizeQuaternionShortestPath", true);
     conf.setValue("normalizeQuaternions", true);
     conf.setValue("mergeAnimationClips", false);
@@ -597,35 +598,37 @@ void CgltfImporter::doOpenData(const Containers::ArrayView<const char> data) {
 
     /* Check required extensions. Every extension in extensionsRequired is
        required to "load and/or render an asset". */
-    constexpr Containers::StringView supportedExtensions[]{
-        /* Parsed by cgltf and handled by us */
-        "KHR_lights_punctual"_s,
-        "KHR_materials_clearcoat"_s,
-        "KHR_materials_pbrSpecularGlossiness"_s,
-        "KHR_materials_unlit"_s,
-        "KHR_mesh_quantization"_s,
-        "KHR_texture_basisu"_s,
-        "KHR_texture_transform"_s,
-        /* Manually parsed */
-        "GOOGLE_texture_basis"_s,
-        "MSFT_texture_dds"_s
-    };
+    if(!configuration().value<bool>("ignoreRequiredExtensions")) {
+        constexpr Containers::StringView supportedExtensions[]{
+            /* Parsed by cgltf and handled by us */
+            "KHR_lights_punctual"_s,
+            "KHR_materials_clearcoat"_s,
+            "KHR_materials_pbrSpecularGlossiness"_s,
+            "KHR_materials_unlit"_s,
+            "KHR_mesh_quantization"_s,
+            "KHR_texture_basisu"_s,
+            "KHR_texture_transform"_s,
+            /* Manually parsed */
+            "GOOGLE_texture_basis"_s,
+            "MSFT_texture_dds"_s
+        };
 
-    /* M*N loop should be okay here, extensionsRequired should usually have no or
-       very few entries. Consider binary search if the list of supported
-       extensions reaches a few dozen. */
-    for(Containers::StringView required: Containers::arrayView(_d->data->extensions_required, _d->data->extensions_required_count)) {
-        bool found = false;
-        for(const auto& supported: supportedExtensions) {
-            if(supported == required) {
-                found = true;
-                break;
+        /* M*N loop should be okay here, extensionsRequired should usually have no or
+           very few entries. Consider binary search if the list of supported
+           extensions reaches a few dozen. */
+        for(Containers::StringView required: Containers::arrayView(_d->data->extensions_required, _d->data->extensions_required_count)) {
+            bool found = false;
+            for(const auto& supported: supportedExtensions) {
+                if(supported == required) {
+                    found = true;
+                    break;
+                }
             }
-        }
-        if(!found) {
-            Error{} << "Trade::CgltfImporter::openData(): required extension" << required << "not supported";
-            doClose();
-            return;
+            if(!found) {
+                Error{} << "Trade::CgltfImporter::openData(): required extension" << required << "not supported";
+                doClose();
+                return;
+            }
         }
     }
 
