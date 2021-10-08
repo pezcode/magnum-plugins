@@ -84,6 +84,7 @@ struct CgltfImporterTest: TestSuite::Tester {
     void animation();
     void animationOutOfBounds();
     void animationInvalid();
+    void animationInvalidBufferNotFound();
     void animationInvalidInterpolation();
     void animationMismatchingCount();
     void animationMissingTargetNode();
@@ -122,6 +123,7 @@ struct CgltfImporterTest: TestSuite::Tester {
     void skin();
     void skinOutOfBounds();
     void skinInvalid();
+    void skinInvalidBufferNotFound();
     void skinNoJointsProperty();
 
     void mesh();
@@ -138,6 +140,7 @@ struct CgltfImporterTest: TestSuite::Tester {
     void meshPrimitivesTypes();
     void meshOutOfBounds();
     void meshInvalid();
+    void meshInvalidIndicesBufferNotFound();
     void meshInvalidSkinAttributes();
     void meshInvalidTypes();
 
@@ -256,6 +259,14 @@ constexpr struct {
     {"unexpected rotation type", "rotation track has unexpected type 1/6"},
     {"unexpected scaling type", "scaling track has unexpected type 4/6"},
     {"unsupported path", "unsupported track target 0"}
+};
+
+constexpr struct {
+    const char* name;
+    const char* message;
+} AnimationInvalidBufferNotFoundData[]{
+    {"input buffer not found", "error opening file: /nonexistent1.bin : file not found"},
+    {"output buffer not found", "error opening file: /nonexistent2.bin : file not found"}
 };
 
 constexpr struct {
@@ -603,6 +614,9 @@ CgltfImporterTest::CgltfImporterTest() {
     addInstancedTests({&CgltfImporterTest::animationInvalid},
         Containers::arraySize(AnimationInvalidData));
 
+    addInstancedTests({&CgltfImporterTest::animationInvalidBufferNotFound},
+        Containers::arraySize(AnimationInvalidBufferNotFoundData));
+
     addTests({&CgltfImporterTest::animationInvalidInterpolation,
               &CgltfImporterTest::animationMismatchingCount,
               &CgltfImporterTest::animationMissingTargetNode});
@@ -661,6 +675,8 @@ CgltfImporterTest::CgltfImporterTest() {
     addInstancedTests({&CgltfImporterTest::skinInvalid},
         Containers::arraySize(SkinInvalidData));
 
+    addTests({&CgltfImporterTest::skinInvalidBufferNotFound});
+
     addInstancedTests({&CgltfImporterTest::skinOutOfBounds},
         Containers::arraySize(SkinOutOfBoundsData));
 
@@ -688,6 +704,8 @@ CgltfImporterTest::CgltfImporterTest() {
 
     addInstancedTests({&CgltfImporterTest::meshInvalid},
         Containers::arraySize(MeshInvalidData));
+
+    addTests({&CgltfImporterTest::meshInvalidIndicesBufferNotFound});
 
     addInstancedTests({&CgltfImporterTest::meshInvalidSkinAttributes},
         Containers::arraySize(MeshInvalidSkinAttributesData));
@@ -1193,6 +1211,27 @@ void CgltfImporterTest::animationInvalid() {
        interpolation mode because that imports without errors and defaults to
        linear interpolation, tested in animationInvalidInterpolation(). */
     CORRADE_COMPARE(importer->animationCount(), Containers::arraySize(AnimationInvalidData) + 1);
+
+    std::ostringstream out;
+    Error redirectError{&out};
+    CORRADE_VERIFY(!importer->animation(data.name));
+    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::CgltfImporter::animation(): {}\n", data.message));
+}
+
+void CgltfImporterTest::animationInvalidBufferNotFound() {
+    auto&& data = AnimationInvalidBufferNotFoundData[testCaseInstanceId()];
+    setTestCaseDescription(data.name);
+
+    /* These tests have to be separate from TinyGltfImporter because it errors
+       out during import trying to load the buffer */
+
+    Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
+
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
+        "animation-buffer-notfound.gltf")));
+
+    /* Check we didn't forget to test anything */
+    CORRADE_COMPARE(importer->animationCount(), Containers::arraySize(AnimationInvalidBufferNotFoundData));
 
     std::ostringstream out;
     Error redirectError{&out};
@@ -2285,6 +2324,23 @@ void CgltfImporterTest::skinInvalid() {
     CORRADE_COMPARE(out.str(), Utility::formatString("Trade::CgltfImporter::skin3D(): {}\n", data.message));
 }
 
+void CgltfImporterTest::skinInvalidBufferNotFound() {
+    /* This test has to be separate from TinyGltfImporter because it errors
+       out during import trying to load the buffer */
+
+    Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
+
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
+        "skin-buffer-notfound.gltf")));
+
+    CORRADE_COMPARE(importer->skin3DCount(), 1);
+
+    std::ostringstream out;
+    Error redirectError{&out};
+    CORRADE_VERIFY(!importer->skin3D("buffer not found"));
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::skin3D(): error opening file: /nonexistent.bin : file not found\n");
+}
+
 void CgltfImporterTest::skinNoJointsProperty() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
 
@@ -3115,6 +3171,26 @@ void CgltfImporterTest::meshInvalid() {
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->mesh(data.name));
     CORRADE_COMPARE(out.str(), Utility::formatString("Trade::CgltfImporter::mesh(): {}\n", data.message));
+}
+
+void CgltfImporterTest::meshInvalidIndicesBufferNotFound() {
+    /* This test has to be separate from TinyGltfImporter because it errors
+       out during import trying to load the buffer.
+
+       Not testing this for the attribute buffer since that's already done by
+       openExternalDataNotFound(). */
+
+    Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
+
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
+        "mesh-indices-buffer-notfound.gltf")));
+
+    CORRADE_COMPARE(importer->meshCount(), 1);
+
+    std::ostringstream out;
+    Error redirectError{&out};
+    CORRADE_VERIFY(!importer->mesh("indices buffer not found"));
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::mesh(): error opening file: /nonexistent.bin : file not found\n");
 }
 
 void CgltfImporterTest::meshInvalidSkinAttributes() {

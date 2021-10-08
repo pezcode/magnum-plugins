@@ -59,6 +59,7 @@ corrade_add_test(CgltfImporterTest
     ${CgltfImporterTest_RESOURCES}
     LIBRARIES Magnum::Trade
     FILES
+        animation-buffer-notfound.gltf
         # modified version of animation-patching.* from TinyGltfImporter
         # without size mismatch between input and output samplers
         animation-patching-fixed.bin
@@ -74,12 +75,14 @@ corrade_add_test(CgltfImporterTest
         external-data-order.gltf
         image-buffer-notfound.gltf
         image-no-data.gltf
+        mesh-indices-buffer-notfound.gltf
         mesh-invalid-accessor-types.gltf
         mesh-invalid-skin-attributes.gltf
         mesh-skin-attributes.bin
         mesh-skin-attributes.gltf
         scene-invalid-child-not-root.gltf
         scene-invalid-multiple-parents.gltf
+        skin-buffer-notfound.gltf
         texture-extensions-invalid-basisu-oob.gltf
         texture-extensions-invalid.gltf
         texture-extensions.gltf
