@@ -107,6 +107,38 @@ using namespace Magnum::Math::Literals;
 
 namespace {
 
+/* Convert cgltf type enums back into strings for useful error output */
+Containers::StringView gltfType(cgltf_type type) {
+    switch(type) {
+        case cgltf_type_scalar: return "SCALAR"_s;
+        case cgltf_type_vec2:   return "VEC2"_s;
+        case cgltf_type_vec3:   return "VEC3"_s;
+        case cgltf_type_vec4:   return "VEC4"_s;
+        case cgltf_type_mat2:   return "MAT2"_s;
+        case cgltf_type_mat3:   return "MAT3"_s;
+        case cgltf_type_mat4:   return "MAT4"_s;
+        case cgltf_type_invalid:
+            break;
+    }
+
+    return "UNKNOWN"_s;
+}
+
+Containers::StringView gltfComponentType(cgltf_component_type type) {
+    switch(type) {
+        case cgltf_component_type_r_8:   return "BYTE (5120)"_s;
+        case cgltf_component_type_r_8u:  return "UNSIGNED_BYTE (5121)"_s;
+        case cgltf_component_type_r_16:  return "SHORT (5122)"_s;
+        case cgltf_component_type_r_16u: return "UNSIGNED_SHORT (5123)"_s;
+        case cgltf_component_type_r_32u: return "UNSIGNED_INT (5125)"_s;
+        case cgltf_component_type_r_32f: return "FLOAT (5126)"_s;
+        case cgltf_component_type_invalid:
+            break;
+    }
+
+    return "UNKNOWN"_s;
+}
+
 std::size_t elementSize(const cgltf_accessor* accessor) {
     /* Technically cgltf_calc_size isn't part of the public API but we bundle
        cgltf so there shouldn't be any surprises. Worst case we'll have
@@ -904,7 +936,7 @@ Containers::Optional<AnimationData> CgltfImporter::doAnimation(UnsignedInt id) {
             const cgltf_accessor* input = sampler.input;
             if(input->type != cgltf_type_scalar || input->component_type != cgltf_component_type_r_32f) {
                 /** @todo Enum to string? Enum values don't match glTF magic numbers */
-                Error{} << "Trade::CgltfImporter::animation(): time track has unexpected type" << input->type << Debug::nospace << "/" << Debug::nospace << input->component_type;
+                Error{} << "Trade::CgltfImporter::animation(): time track has unexpected type" << gltfType(input->type) << "/" << gltfComponentType(input->component_type);
                 return Containers::NullOpt;
             }
 
@@ -952,7 +984,7 @@ Containers::Optional<AnimationData> CgltfImporter::doAnimation(UnsignedInt id) {
             /* Translation */
             if(channel.target_path == cgltf_animation_path_type_translation) {
                 if(output->type != cgltf_type_vec3 || output->component_type != cgltf_component_type_r_32f) {
-                    Error{} << "Trade::CgltfImporter::animation(): translation track has unexpected type" << output->type << Debug::nospace << "/" << Debug::nospace << output->component_type;
+                    Error{} << "Trade::CgltfImporter::animation(): translation track has unexpected type" << gltfType(output->type) << "/" << gltfComponentType(output->component_type);
                     return Containers::NullOpt;
                 }
 
@@ -985,7 +1017,7 @@ Containers::Optional<AnimationData> CgltfImporter::doAnimation(UnsignedInt id) {
                     cgltf_accessor_unpack_floats might help with unpacking them */
 
                 if(output->type != cgltf_type_vec4 || output->component_type != cgltf_component_type_r_32f) {
-                    Error{} << "Trade::CgltfImporter::animation(): rotation track has unexpected type" << output->type << Debug::nospace << "/" << Debug::nospace << output->component_type;
+                    Error{} << "Trade::CgltfImporter::animation(): rotation track has unexpected type" << gltfType(output->type) << "/" << gltfComponentType(output->component_type);
                     return Containers::NullOpt;
                 }
 
@@ -1039,7 +1071,7 @@ Containers::Optional<AnimationData> CgltfImporter::doAnimation(UnsignedInt id) {
             /* Scale */
             } else if(channel.target_path == cgltf_animation_path_type_scale) {
                 if(output->type != cgltf_type_vec3 || output->component_type != cgltf_component_type_r_32f) {
-                    Error{} << "Trade::CgltfImporter::animation(): scaling track has unexpected type" << output->type << Debug::nospace << "/" << Debug::nospace << output->component_type;
+                    Error{} << "Trade::CgltfImporter::animation(): scaling track has unexpected type" << gltfType(output->type) << "/" << gltfComponentType(output->component_type);
                     return Containers::NullOpt;
                 }
 
@@ -1148,6 +1180,7 @@ Containers::Optional<CameraData> CgltfImporter::doCamera(UnsignedInt id) {
             Vector2{data.xmag, data.ymag}*2.0f, data.znear, data.zfar};
     }
 
+    CORRADE_INTERNAL_ASSERT(camera.type == cgltf_camera_type_invalid);
     Error{} << "Trade::CgltfImporter::camera(): invalid camera type";
     return Containers::NullOpt;
 }
@@ -1186,7 +1219,8 @@ Containers::Optional<LightData> CgltfImporter::doLight(UnsignedInt id) {
     } else if(light.type == cgltf_light_type_directional) {
         type = LightData::Type::Directional;
     } else {
-        Error{} << "Trade::CgltfImporter::light(): invalid light type" << light.type;
+        CORRADE_INTERNAL_ASSERT(light.type == cgltf_light_type_invalid);
+        Error{} << "Trade::CgltfImporter::light(): invalid light type";
         return Containers::NullOpt;
     }
 
@@ -1440,8 +1474,7 @@ Containers::Optional<SkinData3D> CgltfImporter::doSkin3D(const UnsignedInt id) {
             return Containers::NullOpt;
 
         if(accessor->type != cgltf_type_mat4 || accessor->component_type != cgltf_component_type_r_32f) {
-            /** @todo Enums to string for better error messages? */
-            Error{} << "Trade::CgltfImporter::skin3D(): inverse bind matrices have unexpected type" << accessor->type << Debug::nospace << "/" << Debug::nospace << accessor->component_type;
+            Error{} << "Trade::CgltfImporter::skin3D(): inverse bind matrices have unexpected type" << gltfType(accessor->type) << "/" << gltfComponentType(accessor->component_type);
             return Containers::NullOpt;
         }
 
@@ -1586,163 +1619,9 @@ Containers::Optional<MeshData> CgltfImporter::doMesh(const UnsignedInt id, Unsig
         else if(accessor->component_type == cgltf_component_type_r_32f)
             componentFormat = VertexFormat::Float;
         else {
-            Error{} << "Trade::CgltfImporter::mesh(): attribute" << semantic << "has an invalid component type";
+            CORRADE_INTERNAL_ASSERT(accessor->component_type == cgltf_component_type_invalid);
+            Error{} << "Trade::CgltfImporter::mesh(): attribute" << nameString << "has an invalid component type";
             return {};
-        }
-
-        /* Whitelist supported attribute and data type combinations */
-        MeshAttribute name;
-        if(attribute.type == cgltf_attribute_type_position) {
-            name = MeshAttribute::Position;
-
-            if(accessor->type != cgltf_type_vec3) {
-                Error{} << "Trade::CgltfImporter::mesh(): unexpected" << semantic << "type" << accessor->type;
-                return Containers::NullOpt;
-            }
-
-            if(!(componentFormat == VertexFormat::Float && !accessor->normalized) &&
-               /* KHR_mesh_quantization. Both normalized and unnormalized
-                  bytes/shorts are okay. */
-               componentFormat != VertexFormat::UnsignedByte &&
-               componentFormat != VertexFormat::Byte &&
-               componentFormat != VertexFormat::UnsignedShort &&
-               componentFormat != VertexFormat::Short) {
-                Error{} << "Trade::CgltfImporter::mesh(): unsupported" << semantic << "component type"
-                    << (accessor->normalized ? "normalized" : "unnormalized")
-                    << componentFormat;
-                return Containers::NullOpt;
-            }
-
-        } else if(attribute.type == cgltf_attribute_type_normal) {
-            name = MeshAttribute::Normal;
-
-            if(accessor->type != cgltf_type_vec3) {
-                Error{} << "Trade::CgltfImporter::mesh(): unexpected" << semantic << "type" << accessor->type;
-                return Containers::NullOpt;
-            }
-
-            if(!(componentFormat == VertexFormat::Float && !accessor->normalized) &&
-               /* KHR_mesh_quantization */
-               !(componentFormat == VertexFormat::Byte && accessor->normalized) &&
-               !(componentFormat == VertexFormat::Short && accessor->normalized)) {
-                Error{} << "Trade::CgltfImporter::mesh(): unsupported" << semantic << "component type"
-                    << (accessor->normalized ? "normalized" : "unnormalized")
-                    << componentFormat;
-                return Containers::NullOpt;
-            }
-
-        } else if(attribute.type == cgltf_attribute_type_tangent) {
-            name = MeshAttribute::Tangent;
-
-            if(accessor->type != cgltf_type_vec4) {
-                Error{} << "Trade::CgltfImporter::mesh(): unexpected" << semantic << "type" << accessor->type;
-                return Containers::NullOpt;
-            }
-
-            if(!(componentFormat == VertexFormat::Float && !accessor->normalized) &&
-               /* KHR_mesh_quantization */
-               !(componentFormat == VertexFormat::Byte && accessor->normalized) &&
-               !(componentFormat == VertexFormat::Short && accessor->normalized)) {
-                Error{} << "Trade::CgltfImporter::mesh(): unsupported" << semantic << "component type"
-                    << (accessor->normalized ? "normalized" : "unnormalized")
-                    << componentFormat;
-                return Containers::NullOpt;
-            }
-
-        } else if(attribute.type == cgltf_attribute_type_texcoord) {
-            name = MeshAttribute::TextureCoordinates;
-
-            if(accessor->type != cgltf_type_vec2) {
-                Error{} << "Trade::CgltfImporter::mesh(): unexpected" << semantic << "type" << accessor->type;
-                return Containers::NullOpt;
-            }
-
-            /* Core spec only allows float and normalized bytes/shorts, the
-               rest is added by KHR_mesh_quantization */
-            if(!(componentFormat == VertexFormat::Float && !accessor->normalized) &&
-               componentFormat != VertexFormat::UnsignedByte &&
-               componentFormat != VertexFormat::Byte &&
-               componentFormat != VertexFormat::UnsignedShort &&
-               componentFormat != VertexFormat::Short) {
-                Error{} << "Trade::CgltfImporter::mesh(): unsupported" << semantic << "component type"
-                    << (accessor->normalized ? "normalized" : "unnormalized")
-                    << componentFormat;
-                return Containers::NullOpt;
-            }
-
-        } else if(attribute.type == cgltf_attribute_type_color) {
-            name = MeshAttribute::Color;
-
-            if(accessor->type != cgltf_type_vec4 && accessor->type != cgltf_type_vec3) {
-                Error{} << "Trade::CgltfImporter::mesh(): unexpected" << semantic << "type" << accessor->type;
-                return Containers::NullOpt;
-            }
-
-            if(!(componentFormat == VertexFormat::Float && !accessor->normalized) &&
-               !(componentFormat == VertexFormat::UnsignedByte && accessor->normalized) &&
-               !(componentFormat == VertexFormat::UnsignedShort && accessor->normalized)) {
-                Error{} << "Trade::CgltfImporter::mesh(): unsupported" << semantic << "component type"
-                    << (accessor->normalized ? "normalized" : "unnormalized")
-                    << componentFormat;
-                return Containers::NullOpt;
-            }
-        } else if(attribute.type == cgltf_attribute_type_joints) {
-            name = _d->meshAttributesForName.at(semantic);
-
-            if(accessor->type != cgltf_type_vec4) {
-                Error{} << "Trade::CgltfImporter::mesh(): unexpected" << semantic << "type" << accessor->type;
-                return Containers::NullOpt;
-            }
-
-            if(!(componentFormat == VertexFormat::UnsignedByte && !accessor->normalized) &&
-               !(componentFormat == VertexFormat::UnsignedShort && !accessor->normalized)) {
-                Error{} << "Trade::CgltfImporter::mesh(): unsupported" << semantic << "component type"
-                    << (accessor->normalized ? "normalized" : "unnormalized")
-                    << componentFormat;
-                return Containers::NullOpt;
-            }
-        } else if(attribute.type == cgltf_attribute_type_weights) {
-            name = _d->meshAttributesForName.at(semantic);
-
-            if(accessor->type != cgltf_type_vec4) {
-                Error{} << "Trade::CgltfImporter::mesh(): unexpected" << semantic << "type" << accessor->type;
-                return Containers::NullOpt;
-            }
-
-            if(!(componentFormat == VertexFormat::Float && !accessor->normalized) &&
-               !(componentFormat == VertexFormat::UnsignedByte && accessor->normalized) &&
-               !(componentFormat == VertexFormat::UnsignedShort && accessor->normalized)) {
-                Error{} << "Trade::CgltfImporter::mesh(): unsupported" << semantic << "component type"
-                    << (accessor->normalized ? "normalized" : "unnormalized")
-                    << componentFormat;
-                return Containers::NullOpt;
-            }
-        /* Object ID, name user-configurable */
-        } else if(nameString == configuration().value("objectIdAttribute")) {
-            name = MeshAttribute::ObjectId;
-
-            if(accessor->type != cgltf_type_scalar) {
-                Error{} << "Trade::CgltfImporter::mesh(): unexpected object ID type" << accessor->type;
-                return Containers::NullOpt;
-            }
-
-            /* The glTF spec says that "Application-specific attribute semantics
-               MUST NOT use unsigned int component type" but I'm not sure what
-               the point of enforcing that would be */
-            if((componentFormat != VertexFormat::UnsignedInt &&
-                componentFormat != VertexFormat::UnsignedShort &&
-                componentFormat != VertexFormat::UnsignedByte) ||
-                accessor->normalized) {
-                Error{} << "Trade::CgltfImporter::mesh(): unsupported object ID component type"
-                    << (accessor->normalized ? "normalized" : "unnormalized")
-                    << componentFormat;
-                return Containers::NullOpt;
-            }
-
-        /* Custom or unrecognized attributes, map to an ID */
-        } else {
-            CORRADE_INTERNAL_ASSERT(attribute.type == cgltf_attribute_type_invalid);
-            name = _d->meshAttributesForName.at(nameString);
         }
 
         UnsignedInt componentCount;
@@ -1765,13 +1644,15 @@ Containers::Optional<MeshData> CgltfImporter::doMesh(const UnsignedInt id, Unsig
             componentCount = 4;
             vectorCount = 4;
         } else {
-            Error{} << "Trade::CgltfImporter::mesh(): attribute" << semantic << "has an invalid type";
+            CORRADE_INTERNAL_ASSERT(accessor->type == cgltf_type_invalid);
+            Error{} << "Trade::CgltfImporter::mesh(): attribute" << nameString << "has an invalid type";
             return {};
         }
 
-        /* Floats should not be normalized */
-        if(accessor->normalized && componentFormat == VertexFormat::Float) {
-            Error{} << "Trade::CgltfImporter::mesh(): floating-point component types can't be normalized";
+        /* Check for illegal normalized types */
+        if(accessor->normalized &&
+            (componentFormat == VertexFormat::Float || componentFormat == VertexFormat::UnsignedInt)) {
+            Error{} << "Trade::CgltfImporter::mesh(): attribute" << nameString << "component type" << gltfComponentType(accessor->component_type) << "can't be normalized";
             return Containers::NullOpt;
         }
 
@@ -1780,15 +1661,170 @@ Containers::Optional<MeshData> CgltfImporter::doMesh(const UnsignedInt id, Unsig
             componentFormat != VertexFormat::Float &&
             !(componentFormat == VertexFormat::Byte && accessor->normalized) &&
             !(componentFormat == VertexFormat::Short && accessor->normalized)) {
-            Error{} << "Trade::CgltfImporter::mesh(): unsupported matrix component type"
+            Error{} << "Trade::CgltfImporter::mesh(): attribute" << nameString << "has an unsupported matrix component type"
                 << (accessor->normalized ? "normalized" : "unnormalized")
-                << componentFormat;
+                << gltfComponentType(accessor->component_type);
             return Containers::NullOpt;
         }
 
         const VertexFormat format = vectorCount ?
             vertexFormat(componentFormat, vectorCount, componentCount, true) :
             vertexFormat(componentFormat, componentCount, accessor->normalized);
+
+        /* Whitelist supported attribute and data type combinations */
+        MeshAttribute name;
+        if(attribute.type == cgltf_attribute_type_position) {
+            name = MeshAttribute::Position;
+
+            if(accessor->type != cgltf_type_vec3) {
+                Error{} << "Trade::CgltfImporter::mesh(): unexpected" << semantic << "type" << gltfType(accessor->type);
+                return Containers::NullOpt;
+            }
+
+            if(!(componentFormat == VertexFormat::Float && !accessor->normalized) &&
+               /* KHR_mesh_quantization. Both normalized and unnormalized
+                  bytes/shorts are okay. */
+               componentFormat != VertexFormat::UnsignedByte &&
+               componentFormat != VertexFormat::Byte &&
+               componentFormat != VertexFormat::UnsignedShort &&
+               componentFormat != VertexFormat::Short) {
+                Error{} << "Trade::CgltfImporter::mesh(): unsupported" << semantic << "component type"
+                    << (accessor->normalized ? "normalized" : "unnormalized")
+                    << gltfComponentType(accessor->component_type);
+                return Containers::NullOpt;
+            }
+
+        } else if(attribute.type == cgltf_attribute_type_normal) {
+            name = MeshAttribute::Normal;
+
+            if(accessor->type != cgltf_type_vec3) {
+                Error{} << "Trade::CgltfImporter::mesh(): unexpected" << semantic << "type" << gltfType(accessor->type);
+                return Containers::NullOpt;
+            }
+
+            if(!(componentFormat == VertexFormat::Float && !accessor->normalized) &&
+               /* KHR_mesh_quantization */
+               !(componentFormat == VertexFormat::Byte && accessor->normalized) &&
+               !(componentFormat == VertexFormat::Short && accessor->normalized)) {
+                Error{} << "Trade::CgltfImporter::mesh(): unsupported" << semantic << "component type"
+                    << (accessor->normalized ? "normalized" : "unnormalized")
+                    << gltfComponentType(accessor->component_type);
+                return Containers::NullOpt;
+            }
+
+        } else if(attribute.type == cgltf_attribute_type_tangent) {
+            name = MeshAttribute::Tangent;
+
+            if(accessor->type != cgltf_type_vec4) {
+                Error{} << "Trade::CgltfImporter::mesh(): unexpected" << semantic << "type" << gltfType(accessor->type);
+                return Containers::NullOpt;
+            }
+
+            if(!(componentFormat == VertexFormat::Float && !accessor->normalized) &&
+               /* KHR_mesh_quantization */
+               !(componentFormat == VertexFormat::Byte && accessor->normalized) &&
+               !(componentFormat == VertexFormat::Short && accessor->normalized)) {
+                Error{} << "Trade::CgltfImporter::mesh(): unsupported" << semantic << "component type"
+                    << (accessor->normalized ? "normalized" : "unnormalized")
+                    << gltfComponentType(accessor->component_type);
+                return Containers::NullOpt;
+            }
+
+        } else if(attribute.type == cgltf_attribute_type_texcoord) {
+            name = MeshAttribute::TextureCoordinates;
+
+            if(accessor->type != cgltf_type_vec2) {
+                Error{} << "Trade::CgltfImporter::mesh(): unexpected" << semantic << "type" << gltfType(accessor->type);
+                return Containers::NullOpt;
+            }
+
+            /* Core spec only allows float and normalized unsigned bytes/shorts, the
+               rest is added by KHR_mesh_quantization */
+            if(!(componentFormat == VertexFormat::Float && !accessor->normalized) &&
+               componentFormat != VertexFormat::UnsignedByte &&
+               componentFormat != VertexFormat::Byte &&
+               componentFormat != VertexFormat::UnsignedShort &&
+               componentFormat != VertexFormat::Short) {
+                Error{} << "Trade::CgltfImporter::mesh(): unsupported" << semantic << "component type"
+                    << (accessor->normalized ? "normalized" : "unnormalized")
+                    << gltfComponentType(accessor->component_type);
+                return Containers::NullOpt;
+            }
+
+        } else if(attribute.type == cgltf_attribute_type_color) {
+            name = MeshAttribute::Color;
+
+            if(accessor->type != cgltf_type_vec4 && accessor->type != cgltf_type_vec3) {
+                Error{} << "Trade::CgltfImporter::mesh(): unexpected" << semantic << "type" << gltfType(accessor->type);
+                return Containers::NullOpt;
+            }
+
+            if(!(componentFormat == VertexFormat::Float && !accessor->normalized) &&
+               !(componentFormat == VertexFormat::UnsignedByte && accessor->normalized) &&
+               !(componentFormat == VertexFormat::UnsignedShort && accessor->normalized)) {
+                Error{} << "Trade::CgltfImporter::mesh(): unsupported" << semantic << "component type"
+                    << (accessor->normalized ? "normalized" : "unnormalized")
+                    << gltfComponentType(accessor->component_type);
+                return Containers::NullOpt;
+            }
+        } else if(attribute.type == cgltf_attribute_type_joints) {
+            name = _d->meshAttributesForName.at(semantic);
+
+            if(accessor->type != cgltf_type_vec4) {
+                Error{} << "Trade::CgltfImporter::mesh(): unexpected" << semantic << "type" << gltfType(accessor->type);
+                return Containers::NullOpt;
+            }
+
+            if(!(componentFormat == VertexFormat::UnsignedByte && !accessor->normalized) &&
+               !(componentFormat == VertexFormat::UnsignedShort && !accessor->normalized)) {
+                Error{} << "Trade::CgltfImporter::mesh(): unsupported" << semantic << "component type"
+                    << (accessor->normalized ? "normalized" : "unnormalized")
+                    << gltfComponentType(accessor->component_type);
+                return Containers::NullOpt;
+            }
+        } else if(attribute.type == cgltf_attribute_type_weights) {
+            name = _d->meshAttributesForName.at(semantic);
+
+            if(accessor->type != cgltf_type_vec4) {
+                Error{} << "Trade::CgltfImporter::mesh(): unexpected" << semantic << "type" << gltfType(accessor->type);
+                return Containers::NullOpt;
+            }
+
+            if(!(componentFormat == VertexFormat::Float && !accessor->normalized) &&
+               !(componentFormat == VertexFormat::UnsignedByte && accessor->normalized) &&
+               !(componentFormat == VertexFormat::UnsignedShort && accessor->normalized)) {
+                Error{} << "Trade::CgltfImporter::mesh(): unsupported" << semantic << "component type"
+                    << (accessor->normalized ? "normalized" : "unnormalized")
+                    << gltfComponentType(accessor->component_type);
+                return Containers::NullOpt;
+            }
+        /* Object ID, name user-configurable */
+        } else if(nameString == configuration().value("objectIdAttribute")) {
+            name = MeshAttribute::ObjectId;
+
+            if(accessor->type != cgltf_type_scalar) {
+                Error{} << "Trade::CgltfImporter::mesh(): unexpected object ID type" << gltfType(accessor->type);
+                return Containers::NullOpt;
+            }
+
+            /* The glTF spec says that "Application-specific attribute semantics
+               MUST NOT use unsigned int component type" but I'm not sure what
+               the point of enforcing that would be */
+            if((componentFormat != VertexFormat::UnsignedInt &&
+                componentFormat != VertexFormat::UnsignedShort &&
+                componentFormat != VertexFormat::UnsignedByte) ||
+                accessor->normalized) {
+                Error{} << "Trade::CgltfImporter::mesh(): unsupported object ID component type"
+                    << (accessor->normalized ? "normalized" : "unnormalized")
+                    << gltfComponentType(accessor->component_type);
+                return Containers::NullOpt;
+            }
+
+        /* Custom or unrecognized attributes, map to an ID */
+        } else {
+            CORRADE_INTERNAL_ASSERT(attribute.type == cgltf_attribute_type_invalid);
+            name = _d->meshAttributesForName.at(nameString);
+        }
 
         /* Remember which buffer the attribute is in and the range, for
            consecutive attribs expand the range */
@@ -1886,7 +1922,7 @@ Containers::Optional<MeshData> CgltfImporter::doMesh(const UnsignedInt id, Unsig
             return Containers::NullOpt;
 
         if(accessor->type != cgltf_type_scalar) {
-            Error() << "Trade::CgltfImporter::mesh(): unexpected index type" << accessor->type;
+            Error() << "Trade::CgltfImporter::mesh(): unexpected index type" << gltfType(accessor->type);
             return Containers::NullOpt;
         }
 
@@ -1903,7 +1939,7 @@ Containers::Optional<MeshData> CgltfImporter::doMesh(const UnsignedInt id, Unsig
         else if(accessor->component_type == cgltf_component_type_r_32u)
             type = MeshIndexType::UnsignedInt;
         else {
-            Error{} << "Trade::CgltfImporter::mesh(): unexpected index component type" << accessor->component_type;
+            Error{} << "Trade::CgltfImporter::mesh(): unexpected index component type" << gltfComponentType(accessor->component_type);
             return Containers::NullOpt;
         }
 

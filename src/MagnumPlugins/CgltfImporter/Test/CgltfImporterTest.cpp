@@ -254,10 +254,10 @@ constexpr struct {
     const char* name;
     const char* message;
 } AnimationInvalidData[]{
-    {"unexpected time type", "time track has unexpected type 4/6"},
-    {"unexpected translation type", "translation track has unexpected type 4/6"},
-    {"unexpected rotation type", "rotation track has unexpected type 1/6"},
-    {"unexpected scaling type", "scaling track has unexpected type 4/6"},
+    {"unexpected time type", "time track has unexpected type VEC4 / FLOAT (5126)"},
+    {"unexpected translation type", "translation track has unexpected type VEC4 / FLOAT (5126)"},
+    {"unexpected rotation type", "rotation track has unexpected type SCALAR / FLOAT (5126)"},
+    {"unexpected scaling type", "scaling track has unexpected type VEC4 / FLOAT (5126)"},
     {"unsupported path", "unsupported track target 0"}
 };
 
@@ -273,7 +273,7 @@ constexpr struct {
     const char* name;
     const char* message;
 } LightInvalidData[]{
-    {"unknown type", "invalid light type 0"},
+    {"unknown type", "invalid light type"},
     {"directional with range", "range can't be defined for a directional light"},
     {"spot with too small inner angle", "inner and outer cone angle Deg(-0.572958) and Deg(45) out of allowed bounds"},
     /* These are kinda silly (not sure why we should limit to 90° and why inner
@@ -295,8 +295,8 @@ constexpr struct {
     const char* message;
 } SkinInvalidData[]{
     {"no joints", "skin has no joints"},
-    {"wrong accessor type", "inverse bind matrices have unexpected type 6/6"},
-    {"wrong accessor component type", "inverse bind matrices have unexpected type 7/4"},
+    {"wrong accessor type", "inverse bind matrices have unexpected type MAT3 / FLOAT (5126)"},
+    {"wrong accessor component type", "inverse bind matrices have unexpected type MAT4 / UNSIGNED_SHORT (5123)"},
     {"wrong accessor count", "invalid inverse bind matrix count, expected 2 but got 3"}
 };
 
@@ -377,25 +377,25 @@ constexpr struct {
 } MeshInvalidData[]{
     {"invalid primitive", "mesh-invalid.gltf", "unrecognized primitive 666"},
     {"different vertex count for each accessor", "mesh-invalid-mismatching-attribute-count.gltf", "mismatched vertex count for attribute TEXCOORD, expected 3 but got 4"},
-    {"unexpected position type", "mesh-invalid.gltf", "unexpected POSITION type 2"},
-    {"unsupported position component type", "mesh-invalid.gltf", "unsupported POSITION component type unnormalized VertexFormat::UnsignedInt"},
-    {"unexpected normal type", "mesh-invalid.gltf", "unexpected NORMAL type 2"},
-    {"unsupported normal component type", "mesh-invalid.gltf", "unsupported NORMAL component type unnormalized VertexFormat::UnsignedInt"},
-    {"unexpected tangent type", "mesh-invalid.gltf", "unexpected TANGENT type 3"},
-    {"unsupported tangent component type", "mesh-invalid.gltf", "unsupported TANGENT component type unnormalized VertexFormat::Byte"},
-    {"unexpected texcoord type", "mesh-invalid.gltf", "unexpected TEXCOORD type 3"},
-    {"unsupported texcoord component type", "mesh-invalid.gltf", "unsupported TEXCOORD component type normalized VertexFormat::UnsignedInt"},
-    {"unexpected color type", "mesh-invalid.gltf", "unexpected COLOR type 2"},
-    {"unsupported color component type", "mesh-invalid.gltf", "unsupported COLOR component type unnormalized VertexFormat::Byte"},
-    {"unexpected object id type", "mesh-invalid.gltf", "unexpected object ID type 2"},
-    {"unsupported object id component type", "mesh-invalid.gltf", "unsupported object ID component type unnormalized VertexFormat::Short"},
-    {"unexpected index type", "mesh-invalid.gltf", "unexpected index type 2"},
-    {"unsupported index component type", "mesh-invalid.gltf", "unexpected index component type 3"},
+    {"unexpected position type", "mesh-invalid.gltf", "unexpected POSITION type VEC2"},
+    {"unsupported position component type", "mesh-invalid.gltf", "unsupported POSITION component type unnormalized UNSIGNED_INT (5125)"},
+    {"unexpected normal type", "mesh-invalid.gltf", "unexpected NORMAL type VEC2"},
+    {"unsupported normal component type", "mesh-invalid.gltf", "unsupported NORMAL component type unnormalized UNSIGNED_INT (5125)"},
+    {"unexpected tangent type", "mesh-invalid.gltf", "unexpected TANGENT type VEC3"},
+    {"unsupported tangent component type", "mesh-invalid.gltf", "unsupported TANGENT component type unnormalized BYTE (5120)"},
+    {"unexpected texcoord type", "mesh-invalid.gltf", "unexpected TEXCOORD type VEC3"},
+    {"unsupported texcoord component type", "mesh-invalid.gltf", "unsupported TEXCOORD component type unnormalized UNSIGNED_INT (5125)"},
+    {"unexpected color type", "mesh-invalid.gltf", "unexpected COLOR type VEC2"},
+    {"unsupported color component type", "mesh-invalid.gltf", "unsupported COLOR component type unnormalized BYTE (5120)"},
+    {"unexpected object id type", "mesh-invalid.gltf", "unexpected object ID type VEC2"},
+    {"unsupported object id component type", "mesh-invalid.gltf", "unsupported object ID component type unnormalized SHORT (5122)"},
+    {"unexpected index type", "mesh-invalid.gltf", "unexpected index type VEC2"},
+    {"unsupported index component type", "mesh-invalid.gltf", "unexpected index component type SHORT (5122)"},
     {"normalized index type", "mesh-invalid.gltf", "index type can't be normalized"},
     {"strided index view", "mesh-invalid.gltf", "index buffer view is not contiguous"},
     {"accessor type size larger than buffer stride", "mesh-invalid.gltf", "16-byte type defined by accessor 10 can't fit into buffer view 0 stride of 12"},
-    {"normalized float", "mesh-invalid.gltf", "floating-point component types can't be normalized"},
-    {"non-normalized byte matrix", "mesh-invalid.gltf", "unsupported matrix component type unnormalized VertexFormat::Byte"},
+    {"normalized float", "mesh-invalid.gltf", "attribute _THING component type FLOAT (5126) can't be normalized"},
+    {"non-normalized byte matrix", "mesh-invalid.gltf", "attribute _THING has an unsupported matrix component type unnormalized BYTE (5120)"},
     {"sparse accessor", "mesh-invalid.gltf", "accessor 14 is using sparse storage, which is unsupported"},
     {"no bufferview", "mesh-invalid.gltf", "accessor 15 has no buffer view"},
     {"accessor count larger than buffer size", "mesh-invalid-accessor-short.gltf", "accessor 0 needs 33 bytes but buffer view 0 has only 32"},
@@ -406,10 +406,10 @@ constexpr struct {
     const char* name;
     const char* message;
 } MeshInvalidSkinAttributesData[]{
-    {"unexpected joints type", "unexpected JOINTS type 3"},
-    {"unexpected weights type", "unexpected WEIGHTS type 1"},
-    {"unsupported joints component type", "unsupported JOINTS component type unnormalized VertexFormat::UnsignedInt"},
-    {"unsupported weights component type", "unsupported WEIGHTS component type normalized VertexFormat::Byte"}
+    {"unexpected joints type", "unexpected JOINTS type VEC3"},
+    {"unexpected weights type", "unexpected WEIGHTS type SCALAR"},
+    {"unsupported joints component type", "unsupported JOINTS component type unnormalized UNSIGNED_INT (5125)"},
+    {"unsupported weights component type", "unsupported WEIGHTS component type normalized BYTE (5120)"}
 };
 
 constexpr struct {
@@ -1910,7 +1910,7 @@ void CgltfImporterTest::lightMissingType() {
     std::ostringstream out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->light(0));
-    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::light(): invalid light type 0\n");
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::light(): invalid light type\n");
 }
 
 void CgltfImporterTest::lightMissingSpot() {
