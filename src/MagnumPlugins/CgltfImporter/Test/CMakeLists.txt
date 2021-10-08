@@ -74,8 +74,7 @@ corrade_add_test(CgltfImporterTest
         external-data-order.gltf
         image-buffer-notfound.gltf
         image-no-data.gltf
-        mesh-invalid-accessor-component-type.gltf
-        mesh-invalid-accessor-type.gltf
+        mesh-invalid-accessor-types.gltf
         mesh-invalid-skin-attributes.gltf
         mesh-skin-attributes.bin
         mesh-skin-attributes.gltf

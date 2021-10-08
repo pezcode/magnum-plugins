@@ -1,14 +1,25 @@
 {
     "asset": {
-        "version": "2.0"
+        "version": "2.0",
+        "note": "these are not in TinyGltfImporter test files because TinyGLTF produces an error during parsing"
     },
     "meshes": [
+        {
+            "name": "unknown type",
+            "primitives": [
+                {
+                    "attributes": {
+                        "_THING": 0
+                    }
+                }
+            ]
+        },
         {
             "name": "unknown component type",
             "primitives": [
                 {
                     "attributes": {
-                        "_THING": 0
+                        "_THING": 1
                     }
                 }
             ]
@@ -17,8 +28,14 @@
     "accessors": [
         {
             "bufferView": 0,
+            "componentType": 5126,
+            "count": 0,
+            "type": "EEE"
+        },
+        {
+            "bufferView": 0,
             "componentType": 9999,
-            "count": 1,
+            "count": 0,
             "type": "SCALAR"
         }
     ],

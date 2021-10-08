@@ -403,11 +403,10 @@ constexpr struct {
 
 constexpr struct {
     const char* name;
-    const char* file;
     const char* message;
 } MeshInvalidTypesData[]{
-    {"unknown type", "mesh-invalid-accessor-type.gltf", "attribute _THING has an invalid type"},
-    {"unknown component type", "mesh-invalid-accessor-component-type.gltf", "attribute _THING has an invalid component type"}
+    {"unknown type", "attribute _THING has an invalid type"},
+    {"unknown component type", "attribute _THING has an invalid component type"}
 };
 
 constexpr struct {
@@ -3139,7 +3138,8 @@ void CgltfImporterTest::meshInvalidTypes() {
 
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
 
-    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR, data.file)));
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
+        "mesh-invalid-accessor-types.gltf")));
 
     std::ostringstream out;
     Error redirectError{&out};
