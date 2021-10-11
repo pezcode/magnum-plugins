@@ -141,7 +141,6 @@ struct CgltfImporterTest: TestSuite::Tester {
     void meshOutOfBounds();
     void meshInvalid();
     void meshInvalidIndicesBufferNotFound();
-    void meshInvalidSkinAttributes();
     void meshInvalidTypes();
 
     void materialPbrMetallicRoughness();
@@ -156,6 +155,7 @@ struct CgltfImporterTest: TestSuite::Tester {
     void materialTexCoordFlip();
 
     void texture();
+    void textureOutOfBounds();
     void textureInvalid();
     void textureDefaultSampler();
     void textureEmptySampler();
@@ -258,7 +258,9 @@ constexpr struct {
     {"unexpected translation type", "translation track has unexpected type VEC4 / FLOAT (5126)"},
     {"unexpected rotation type", "rotation track has unexpected type SCALAR / FLOAT (5126)"},
     {"unexpected scaling type", "scaling track has unexpected type VEC4 / FLOAT (5126)"},
-    {"unsupported path", "unsupported track target 0"}
+    {"unsupported path", "unsupported track target 0"},
+    {"invalid input accessor", "accessor 3 needs 40 bytes but buffer view 0 has only 0"},
+    {"invalid output accessor", "accessor 4 needs 120 bytes but buffer view 0 has only 0"}
 };
 
 constexpr struct {
@@ -297,7 +299,8 @@ constexpr struct {
     {"no joints", "skin has no joints"},
     {"wrong accessor type", "inverse bind matrices have unexpected type MAT3 / FLOAT (5126)"},
     {"wrong accessor component type", "inverse bind matrices have unexpected type MAT4 / UNSIGNED_SHORT (5123)"},
-    {"wrong accessor count", "invalid inverse bind matrix count, expected 2 but got 3"}
+    {"wrong accessor count", "invalid inverse bind matrix count, expected 2 but got 3"},
+    {"invalid accessor", "accessor 3 needs 196 bytes but buffer view 0 has only 192"}
 };
 
 constexpr struct {
@@ -372,44 +375,40 @@ constexpr struct {
 
 constexpr struct {
     const char* name;
-    const char* file;
     const char* message;
 } MeshInvalidData[]{
-    {"invalid primitive", "mesh-invalid.gltf", "unrecognized primitive 666"},
-    {"different vertex count for each accessor", "mesh-invalid-mismatching-attribute-count.gltf", "mismatched vertex count for attribute TEXCOORD, expected 3 but got 4"},
-    {"unexpected position type", "mesh-invalid.gltf", "unexpected POSITION type VEC2"},
-    {"unsupported position component type", "mesh-invalid.gltf", "unsupported POSITION component type unnormalized UNSIGNED_INT (5125)"},
-    {"unexpected normal type", "mesh-invalid.gltf", "unexpected NORMAL type VEC2"},
-    {"unsupported normal component type", "mesh-invalid.gltf", "unsupported NORMAL component type unnormalized UNSIGNED_INT (5125)"},
-    {"unexpected tangent type", "mesh-invalid.gltf", "unexpected TANGENT type VEC3"},
-    {"unsupported tangent component type", "mesh-invalid.gltf", "unsupported TANGENT component type unnormalized BYTE (5120)"},
-    {"unexpected texcoord type", "mesh-invalid.gltf", "unexpected TEXCOORD type VEC3"},
-    {"unsupported texcoord component type", "mesh-invalid.gltf", "unsupported TEXCOORD component type unnormalized UNSIGNED_INT (5125)"},
-    {"unexpected color type", "mesh-invalid.gltf", "unexpected COLOR type VEC2"},
-    {"unsupported color component type", "mesh-invalid.gltf", "unsupported COLOR component type unnormalized BYTE (5120)"},
-    {"unexpected object id type", "mesh-invalid.gltf", "unexpected object ID type VEC2"},
-    {"unsupported object id component type", "mesh-invalid.gltf", "unsupported object ID component type unnormalized SHORT (5122)"},
-    {"unexpected index type", "mesh-invalid.gltf", "unexpected index type VEC2"},
-    {"unsupported index component type", "mesh-invalid.gltf", "unexpected index component type SHORT (5122)"},
-    {"normalized index type", "mesh-invalid.gltf", "index type can't be normalized"},
-    {"strided index view", "mesh-invalid.gltf", "index buffer view is not contiguous"},
-    {"accessor type size larger than buffer stride", "mesh-invalid.gltf", "16-byte type defined by accessor 10 can't fit into buffer view 0 stride of 12"},
-    {"normalized float", "mesh-invalid.gltf", "attribute _THING component type FLOAT (5126) can't be normalized"},
-    {"non-normalized byte matrix", "mesh-invalid.gltf", "attribute _THING has an unsupported matrix component type unnormalized BYTE (5120)"},
-    {"sparse accessor", "mesh-invalid.gltf", "accessor 14 is using sparse storage, which is unsupported"},
-    {"no bufferview", "mesh-invalid.gltf", "accessor 15 has no buffer view"},
-    {"accessor count larger than buffer size", "mesh-invalid-accessor-short.gltf", "accessor 0 needs 33 bytes but buffer view 0 has only 32"},
-    {"buffer view range out of bounds", "mesh-invalid-bufferview-short.gltf", "buffer view 0 needs 72 bytes but buffer 0 has only 68"}
-};
-
-constexpr struct {
-    const char* name;
-    const char* message;
-} MeshInvalidSkinAttributesData[]{
+    {"invalid primitive", "unrecognized primitive 666"},
+    {"different vertex count for each accessor", "mismatched vertex count for attribute TEXCOORD, expected 3 but got 4"},
+    {"unexpected position type", "unexpected POSITION type VEC2"},
+    {"unsupported position component type", "unsupported POSITION component type unnormalized UNSIGNED_INT (5125)"},
+    {"unexpected normal type", "unexpected NORMAL type VEC2"},
+    {"unsupported normal component type", "unsupported NORMAL component type unnormalized UNSIGNED_INT (5125)"},
+    {"unexpected tangent type", "unexpected TANGENT type VEC3"},
+    {"unsupported tangent component type", "unsupported TANGENT component type unnormalized BYTE (5120)"},
+    {"unexpected texcoord type", "unexpected TEXCOORD type VEC3"},
+    {"unsupported texcoord component type", "unsupported TEXCOORD component type unnormalized UNSIGNED_INT (5125)"},
+    {"unexpected color type", "unexpected COLOR type VEC2"},
+    {"unsupported color component type", "unsupported COLOR component type unnormalized BYTE (5120)"},
     {"unexpected joints type", "unexpected JOINTS type VEC3"},
+    {"unsupported joints component type", "unsupported JOINTS component type unnormalized BYTE (5120)"},
     {"unexpected weights type", "unexpected WEIGHTS type SCALAR"},
-    {"unsupported joints component type", "unsupported JOINTS component type unnormalized UNSIGNED_INT (5125)"},
-    {"unsupported weights component type", "unsupported WEIGHTS component type normalized BYTE (5120)"}
+    {"unsupported weights component type", "unsupported WEIGHTS component type unnormalized BYTE (5120)"},
+    {"unexpected object id type", "unexpected object ID type VEC2"},
+    {"unsupported object id component type", "unsupported object ID component type unnormalized SHORT (5122)"},
+    {"unexpected index type", "unexpected index type VEC2"},
+    {"unsupported index component type", "unexpected index component type SHORT (5122)"},
+    {"normalized index type", "index type can't be normalized"},
+    {"strided index view", "index buffer view is not contiguous"},
+    {"accessor type size larger than buffer stride", "16-byte type defined by accessor 10 can't fit into buffer view 0 stride of 12"},
+    {"normalized float", "attribute _THING component type FLOAT (5126) can't be normalized"},
+    {"normalized int", "attribute _THING component type UNSIGNED_INT (5125) can't be normalized"},
+    {"non-normalized byte matrix", "attribute _THING has an unsupported matrix component type unnormalized BYTE (5120)"},
+    {"sparse accessor", "accessor 14 is using sparse storage, which is unsupported"},
+    {"no bufferview", "accessor 15 has no buffer view"},
+    {"accessor range out of bounds", "accessor 18 needs 48 bytes but buffer view 0 has only 36"},
+    {"buffer view range out of bounds", "buffer view 3 needs 164 bytes but buffer 1 has only 160"},
+    {"multiple buffers", "meshes spanning multiple buffers are not supported"},
+    {"invalid index accessor", "accessor 17 needs 40 bytes but buffer view 0 has only 36"}
 };
 
 constexpr struct {
@@ -510,6 +509,14 @@ constexpr struct {
 
 constexpr struct {
     const char* name;
+    const char* file;
+} TextureOutOfBoundsData[]{
+    {"image out of bounds", "texture-invalid-image-oob.gltf"},
+    {"sampler out of bounds", "texture-invalid-sampler-oob.gltf"}
+};
+
+constexpr struct {
+    const char* name;
     const char* message;
 } TextureInvalidData[]{
     {"invalid sampler minFilter", "invalid minFilter 1"},
@@ -525,17 +532,19 @@ constexpr struct {
     {"GOOGLE_texture_basis", 1},
     {"KHR_texture_basisu", 2},
     {"MSFT_texture_dds", 3},
+    /* declaration order decides preference */
     {"MSFT_texture_dds and GOOGLE_texture_basis", 3},
-    {"MSFT_texture_dds and KHR_texture_basisu", 2},
+    /* KHR_texture_basisu has preference before all other extensions */
+    {"GOOGLE_texture_basis and KHR_texture_basisu", 2},
     {"unknown extension", 0},
-    {"MSFT_texture_dds and unknown", 3}
+    {"GOOGLE_texture_basis and unknown", 1}
 };
 
 constexpr struct {
     const char* name;
     const char* message;
 } TextureExtensionsInvalidData[]{
-    {"out of bounds", "MSFT_texture_dds image 3 out of bounds for 3 images"},
+    {"out of bounds GOOGLE_texture_basis", "GOOGLE_texture_basis image 3 out of bounds for 3 images"},
     {"unknown extension, no fallback", "no image source found"}
 };
 
@@ -574,7 +583,7 @@ constexpr struct {
     const char* file;
     const char* message;
 } UnsupportedVersionData[]{
-    {"glTF 1.0", "version-legacy.gltf", "error opening file: legacy glTF version"},
+    {"legacy major version", "version-legacy.gltf", "error opening file: legacy glTF version"},
     {"unknown major version", "version-unsupported.gltf", "unsupported version 3.0, expected 2.x"},
     {"unknown minor version", "version-unsupported-min.gltf", "unsupported minVersion 2.1, expected 2.0"}
 };
@@ -706,9 +715,6 @@ CgltfImporterTest::CgltfImporterTest() {
         Containers::arraySize(MeshInvalidData));
 
     addTests({&CgltfImporterTest::meshInvalidIndicesBufferNotFound});
-
-    addInstancedTests({&CgltfImporterTest::meshInvalidSkinAttributes},
-        Containers::arraySize(MeshInvalidSkinAttributesData));
 
     addInstancedTests({&CgltfImporterTest::meshInvalidTypes},
         Containers::arraySize(MeshInvalidTypesData));
@@ -2075,7 +2081,7 @@ void CgltfImporterTest::sceneInvalid() {
 
     std::ostringstream out;
     Error redirectError{&out};
-    CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR, data.file)));
+    CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR, data.file)));
     CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF, usually caused by invalid indices or missing required attributes\n");
 }
 
@@ -2519,7 +2525,7 @@ void CgltfImporterTest::meshColors() {
 
 void CgltfImporterTest::meshSkinAttributes() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
-    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR,
         "mesh-skin-attributes.gltf")));
 
     /* The mapping should be available even before the mesh is imported */
@@ -3165,7 +3171,8 @@ void CgltfImporterTest::meshInvalid() {
 
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
 
-    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR, data.file)));
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR,
+        "mesh-invalid.gltf")));
 
     std::ostringstream out;
     Error redirectError{&out};
@@ -3191,21 +3198,6 @@ void CgltfImporterTest::meshInvalidIndicesBufferNotFound() {
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->mesh("indices buffer not found"));
     CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::mesh(): error opening file: /nonexistent.bin : file not found\n");
-}
-
-void CgltfImporterTest::meshInvalidSkinAttributes() {
-    auto&& data = MeshInvalidSkinAttributesData[testCaseInstanceId()];
-    setTestCaseDescription(data.name);
-
-    Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
-
-    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
-        "mesh-invalid-skin-attributes.gltf")));
-
-    std::ostringstream out;
-    Error redirectError{&out};
-    CORRADE_VERIFY(!importer->mesh(data.name));
-    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::CgltfImporter::mesh(): {}\n", data.message));
 }
 
 void CgltfImporterTest::meshInvalidTypes() {
@@ -3976,6 +3968,18 @@ void CgltfImporterTest::texture() {
         }), TestSuite::Compare::Container);
 }
 
+void CgltfImporterTest::textureOutOfBounds() {
+    auto&& data = TextureOutOfBoundsData[testCaseInstanceId()];
+    setTestCaseDescription(data.name);
+
+    Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
+
+    std::ostringstream out;
+    Error redirectError{&out};
+    CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR, data.file)));
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF, usually caused by invalid indices or missing required attributes\n");
+}
+
 void CgltfImporterTest::textureInvalid() {
     auto&& data = TextureInvalidData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
@@ -4052,7 +4056,7 @@ void CgltfImporterTest::textureExtensions() {
 
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
 
-    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR,
         "texture-extensions.gltf")));
 
     /* Check we didn't forget to test anything */
@@ -4066,9 +4070,13 @@ void CgltfImporterTest::textureExtensions() {
 void CgltfImporterTest::textureExtensionsOutOfBounds() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
 
+    /* Cgltf only supports (and therefore checks) KHR_texture_basisu, so this
+       is the only texture extension leading to an error when opening. The rest
+       are checked in doTexture(), tested below in textureExtensionsInvalid(). */
+
     std::ostringstream out;
     Error redirectError{&out};
-    CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
+    CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR,
         "texture-extensions-invalid-basisu-oob.gltf")));
     CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): error opening file: invalid glTF, usually caused by invalid indices or missing required attributes\n");
 }
@@ -4079,7 +4087,7 @@ void CgltfImporterTest::textureExtensionsInvalid() {
 
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
 
-    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR,
         "texture-extensions-invalid.gltf")));
 
     /* Check we didn't forget to test anything */
@@ -4504,7 +4512,7 @@ void CgltfImporterTest::encodedUris() {
 void CgltfImporterTest::versionSupported() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
 
-    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR,
         "version-supported.gltf")));
 }
 
@@ -4516,7 +4524,7 @@ void CgltfImporterTest::versionUnsupported() {
 
     std::ostringstream out;
     Error redirectError{&out};
-    CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR, data.file)));
+    CORRADE_VERIFY(!importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR, data.file)));
     CORRADE_COMPARE(out.str(), Utility::formatString("Trade::CgltfImporter::openData(): {}\n", data.message));
 }
 
