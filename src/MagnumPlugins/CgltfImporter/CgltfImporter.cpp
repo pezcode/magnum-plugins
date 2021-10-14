@@ -201,8 +201,8 @@ bool isDataUri(Containers::StringView uri) {
    https://datatracker.ietf.org/doc/html/rfc3986#section-2.1 */
 std::string decodeUri(Containers::StringView uri) {
     std::string decoded = uri;
-    cgltf_decode_uri(&decoded[0]);
-    decoded.resize(std::strlen(decoded.data()));
+    const std::size_t decodedSize = cgltf_decode_uri(&decoded[0]);
+    decoded.resize(decodedSize);
 
     return decoded;
 }
@@ -470,9 +470,7 @@ Containers::StringView CgltfImporter::Document::decodeString(Containers::StringV
     const std::size_t start = escape.data() - str.data();
 
     Containers::String decoded{str};
-    cgltf_decode_string(decoded.data() + start);
-
-    const std::size_t decodedSize = std::strlen(decoded.data() + start) + start;
+    const std::size_t decodedSize = cgltf_decode_string(decoded.data() + start) + start;
     CORRADE_INTERNAL_ASSERT(decodedSize < str.size());
 
     return decodedStrings.emplace(str.data(), Containers::String{decoded.prefix(decodedSize)}).first->second;
