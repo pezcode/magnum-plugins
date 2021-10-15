@@ -932,8 +932,10 @@ Containers::Optional<AnimationData> CgltfImporter::doAnimation(UnsignedInt id) {
             /* Key properties -- always float time. Not using checkAccessor()
                as this was all checked above once already. */
             const cgltf_accessor* input = sampler.input;
-            if(input->type != cgltf_type_scalar || input->component_type != cgltf_component_type_r_32f) {
-                Error{} << "Trade::CgltfImporter::animation(): time track has unexpected type" << gltfTypeName(input->type) << "/" << gltfComponentTypeName(input->component_type);
+            if(input->type != cgltf_type_scalar || input->component_type != cgltf_component_type_r_32f || input->normalized) {
+                Error{} << "Trade::CgltfImporter::animation(): time track has unexpected type"
+                    << (input->normalized ? "normalized " : "") << Debug::nospace
+                    << gltfTypeName(input->type) << "/" << gltfComponentTypeName(input->component_type);
                 return Containers::NullOpt;
             }
 
@@ -980,8 +982,10 @@ Containers::Optional<AnimationData> CgltfImporter::doAnimation(UnsignedInt id) {
 
             /* Translation */
             if(channel.target_path == cgltf_animation_path_type_translation) {
-                if(output->type != cgltf_type_vec3 || output->component_type != cgltf_component_type_r_32f) {
-                    Error{} << "Trade::CgltfImporter::animation(): translation track has unexpected type" << gltfTypeName(output->type) << "/" << gltfComponentTypeName(output->component_type);
+                if(output->type != cgltf_type_vec3 || output->component_type != cgltf_component_type_r_32f || output->normalized) {
+                    Error{} << "Trade::CgltfImporter::animation(): translation track has unexpected type"
+                        << (output->normalized ? "normalized " : "") << Debug::nospace
+                        << gltfTypeName(output->type) << "/" << gltfComponentTypeName(output->component_type);
                     return Containers::NullOpt;
                 }
 
@@ -1010,11 +1014,13 @@ Containers::Optional<AnimationData> CgltfImporter::doAnimation(UnsignedInt id) {
 
             /* Rotation */
             } else if(channel.target_path == cgltf_animation_path_type_rotation) {
-                /** @todo rotation can be also normalized (?!) to a vector of 8/16/32bit (signed?!) integers
+                /** @todo rotation can be also normalized (?!) to a vector of 8/16bit (signed?!) integers
                     cgltf_accessor_unpack_floats might help with unpacking them */
 
-                if(output->type != cgltf_type_vec4 || output->component_type != cgltf_component_type_r_32f) {
-                    Error{} << "Trade::CgltfImporter::animation(): rotation track has unexpected type" << gltfTypeName(output->type) << "/" << gltfComponentTypeName(output->component_type);
+                if(output->type != cgltf_type_vec4 || output->component_type != cgltf_component_type_r_32f || output->normalized) {
+                    Error{} << "Trade::CgltfImporter::animation(): rotation track has unexpected type"
+                        << (output->normalized ? "normalized " : "") << Debug::nospace
+                        << gltfTypeName(output->type) << "/" << gltfComponentTypeName(output->component_type);
                     return Containers::NullOpt;
                 }
 
@@ -1067,8 +1073,10 @@ Containers::Optional<AnimationData> CgltfImporter::doAnimation(UnsignedInt id) {
 
             /* Scale */
             } else if(channel.target_path == cgltf_animation_path_type_scale) {
-                if(output->type != cgltf_type_vec3 || output->component_type != cgltf_component_type_r_32f) {
-                    Error{} << "Trade::CgltfImporter::animation(): scaling track has unexpected type" << gltfTypeName(output->type) << "/" << gltfComponentTypeName(output->component_type);
+                if(output->type != cgltf_type_vec3 || output->component_type != cgltf_component_type_r_32f || output->normalized) {
+                    Error{} << "Trade::CgltfImporter::animation(): scaling track has unexpected type"
+                        << (output->normalized ? "normalized " : "") << Debug::nospace
+                        << gltfTypeName(output->type) << "/" << gltfComponentTypeName(output->component_type);
                     return Containers::NullOpt;
                 }
 
@@ -1470,8 +1478,10 @@ Containers::Optional<SkinData3D> CgltfImporter::doSkin3D(const UnsignedInt id) {
         if(!checkAccessor(_d->data, "skin3D", accessor))
             return Containers::NullOpt;
 
-        if(accessor->type != cgltf_type_mat4 || accessor->component_type != cgltf_component_type_r_32f) {
-            Error{} << "Trade::CgltfImporter::skin3D(): inverse bind matrices have unexpected type" << gltfTypeName(accessor->type) << "/" << gltfComponentTypeName(accessor->component_type);
+        if(accessor->type != cgltf_type_mat4 || accessor->component_type != cgltf_component_type_r_32f || accessor->normalized) {
+            Error{} << "Trade::CgltfImporter::skin3D(): inverse bind matrices have unexpected type"
+                << (accessor->normalized ? "normalized " : "") << Debug::nospace
+                << gltfTypeName(accessor->type) << "/" << gltfComponentTypeName(accessor->component_type);
             return Containers::NullOpt;
         }
 
