@@ -1082,8 +1082,12 @@ void CgltfImporterTest::requiredExtensionsUnsupportedDisabled() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
     CORRADE_VERIFY(importer->configuration().setValue("ignoreRequiredExtensions", true));
 
+    std::ostringstream out;
+    Warning redirectError{&out};
+
     CORRADE_VERIFY(importer->openFile(Utility::Directory::join(TINYGLTFIMPORTER_TEST_DIR,
         "required-extensions-unsupported.gltf")));
+    CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::openData(): required extension EXT_lights_image_based not supported\n");
 }
 
 void CgltfImporterTest::animation() {
