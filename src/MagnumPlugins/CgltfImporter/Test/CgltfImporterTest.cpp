@@ -86,6 +86,7 @@ struct CgltfImporterTest: TestSuite::Tester {
     void animationInvalid();
     void animationInvalidBufferNotFound();
     void animationInvalidInterpolation();
+    void animationInvalidTypes();
     void animationMismatchingCount();
     void animationMissingTargetNode();
 
@@ -124,6 +125,7 @@ struct CgltfImporterTest: TestSuite::Tester {
     void skinOutOfBounds();
     void skinInvalid();
     void skinInvalidBufferNotFound();
+    void skinInvalidTypes();
     void skinNoJointsProperty();
 
     void mesh();
@@ -266,6 +268,15 @@ constexpr struct {
 constexpr struct {
     const char* name;
     const char* message;
+} AnimationInvalidTypesData[]{
+    {"unknown type", "rotation track has unexpected type UNKNOWN / UNSIGNED_BYTE (5121)"},
+    {"unknown component type", "time track has unexpected type MAT2 / UNKNOWN"},
+    {"normalized float", "scaling track has unexpected type normalized VEC3 / FLOAT (5126)"}
+};
+
+constexpr struct {
+    const char* name;
+    const char* message;
 } AnimationInvalidBufferNotFoundData[]{
     {"input buffer not found", "error opening file: /nonexistent1.bin : file not found"},
     {"output buffer not found", "error opening file: /nonexistent2.bin : file not found"}
@@ -301,6 +312,15 @@ constexpr struct {
     {"wrong accessor component type", "inverse bind matrices have unexpected type MAT4 / UNSIGNED_SHORT (5123)"},
     {"wrong accessor count", "invalid inverse bind matrix count, expected 2 but got 3"},
     {"invalid accessor", "accessor 3 needs 196 bytes but buffer view 0 has only 192"}
+};
+
+constexpr struct {
+    const char* name;
+    const char* message;
+} SkinInvalidTypesData[]{
+    {"unknown type", "inverse bind matrices have unexpected type UNKNOWN / FLOAT (5126)"},
+    {"unknown component type", "inverse bind matrices have unexpected type MAT4 / UNKNOWN"},
+    {"normalized float", "inverse bind matrices have unexpected type normalized MAT4 / FLOAT (5126)"}
 };
 
 constexpr struct {
@@ -626,8 +646,12 @@ CgltfImporterTest::CgltfImporterTest() {
     addInstancedTests({&CgltfImporterTest::animationInvalidBufferNotFound},
         Containers::arraySize(AnimationInvalidBufferNotFoundData));
 
-    addTests({&CgltfImporterTest::animationInvalidInterpolation,
-              &CgltfImporterTest::animationMismatchingCount,
+    addTests({&CgltfImporterTest::animationInvalidInterpolation});
+
+    addInstancedTests({&CgltfImporterTest::animationInvalidTypes},
+        Containers::arraySize(AnimationInvalidTypesData));
+
+    addTests({&CgltfImporterTest::animationMismatchingCount,
               &CgltfImporterTest::animationMissingTargetNode});
 
     addInstancedTests({&CgltfImporterTest::animationSpline},
@@ -685,6 +709,9 @@ CgltfImporterTest::CgltfImporterTest() {
         Containers::arraySize(SkinInvalidData));
 
     addTests({&CgltfImporterTest::skinInvalidBufferNotFound});
+
+    addInstancedTests({&CgltfImporterTest::skinInvalidTypes},
+        Containers::arraySize(SkinInvalidTypesData));
 
     addInstancedTests({&CgltfImporterTest::skinOutOfBounds},
         Containers::arraySize(SkinOutOfBoundsData));
@@ -1259,6 +1286,24 @@ void CgltfImporterTest::animationInvalidInterpolation() {
     CORRADE_COMPARE(animation->trackCount(), 1);
     auto track = animation->track(0);
     CORRADE_COMPARE(track.interpolation(), Animation::Interpolation::Linear);
+}
+
+void CgltfImporterTest::animationInvalidTypes() {
+    auto&& data = AnimationInvalidTypesData[testCaseInstanceId()];
+    setTestCaseDescription(data.name);
+
+    Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
+
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
+        "animation-invalid-types.gltf")));
+
+    /* Check we didn't forget to test anything */
+    CORRADE_COMPARE(importer->animationCount(), Containers::arraySize(AnimationInvalidTypesData));
+
+    std::ostringstream out;
+    Error redirectError{&out};
+    CORRADE_VERIFY(!importer->animation(data.name));
+    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::CgltfImporter::animation(): {}\n", data.message));
 }
 
 void CgltfImporterTest::animationMismatchingCount() {
@@ -2347,6 +2392,24 @@ void CgltfImporterTest::skinInvalidBufferNotFound() {
     CORRADE_COMPARE(out.str(), "Trade::CgltfImporter::skin3D(): error opening file: /nonexistent.bin : file not found\n");
 }
 
+void CgltfImporterTest::skinInvalidTypes() {
+    auto&& data = SkinInvalidTypesData[testCaseInstanceId()];
+    setTestCaseDescription(data.name);
+
+    Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
+
+    CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
+        "skin-invalid-types.gltf")));
+
+    /* Check we didn't forget to test anything */
+    CORRADE_COMPARE(importer->skin3DCount(), Containers::arraySize(AnimationInvalidTypesData));
+
+    std::ostringstream out;
+    Error redirectError{&out};
+    CORRADE_VERIFY(!importer->skin3D(data.name));
+    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::CgltfImporter::skin3D(): {}\n", data.message));
+}
+
 void CgltfImporterTest::skinNoJointsProperty() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
 
@@ -3207,7 +3270,10 @@ void CgltfImporterTest::meshInvalidTypes() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("CgltfImporter");
 
     CORRADE_VERIFY(importer->openFile(Utility::Directory::join(CGLTFIMPORTER_TEST_DIR,
-        "mesh-invalid-accessor-types.gltf")));
+        "mesh-invalid-types.gltf")));
+
+    /* Check we didn't forget to test anything */
+    CORRADE_COMPARE(importer->meshCount(), Containers::arraySize(MeshInvalidTypesData));
 
     std::ostringstream out;
     Error redirectError{&out};
