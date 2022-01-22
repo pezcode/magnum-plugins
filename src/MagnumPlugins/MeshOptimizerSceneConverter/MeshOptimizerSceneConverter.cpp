@@ -25,12 +25,14 @@
 
 #include "MeshOptimizerSceneConverter.h"
 
+#include <Corrade/Containers/EnumSet.h>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/Reference.h>
 #include <Corrade/Utility/ConfigurationGroup.h>
 #include <Magnum/Math/PackingBatch.h>
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/MeshTools/Combine.h>
+#include <Magnum/MeshTools/CompressIndices.h>
 #include <Magnum/MeshTools/Duplicate.h>
 #include <Magnum/MeshTools/GenerateIndices.h>
 #include <Magnum/MeshTools/Interleave.h>
@@ -38,6 +40,10 @@
 #include <Magnum/Trade/ArrayAllocator.h>
 #include <Magnum/Trade/MeshData.h>
 #include <meshoptimizer.h>
+
+#define MESHOPT_HAS_COMPRESSION (MESHOPTIMIZER_VERSION >= 140)
+#define MESHOPT_HAS_FILTER_DECODING (MESHOPTIMIZER_VERSION >= 140)
+#define MESHOPT_HAS_FILTER_ENCODING (MESHOPTIMIZER_VERSION >= 170)
 
 namespace Magnum { namespace Trade {
 
@@ -136,7 +142,7 @@ void populatePositions(const MeshData& mesh, Containers::Array<Vector3>& positio
     }
 }
 
-bool convertInPlaceInternal(const char* prefix, MeshData& mesh, const SceneConverterFlags flags, const Utility::ConfigurationGroup& configuration, Containers::Array<Vector3>& positionStorage, Containers::StridedArrayView1D<const Vector3>& positions, Containers::Optional<UnsignedInt>& vertexSize,  meshopt_VertexCacheStatistics& vertexCacheStatsBefore, meshopt_VertexFetchStatistics& vertexFetchStatsBefore, meshopt_OverdrawStatistics& overdrawStatsBefore) {
+bool optimize(const char* prefix, MeshData& mesh, const SceneConverterFlags flags, const Utility::ConfigurationGroup& configuration, Containers::Array<Vector3>& positionStorage, Containers::StridedArrayView1D<const Vector3>& positions, Containers::Optional<UnsignedInt>& vertexSize,  meshopt_VertexCacheStatistics& vertexCacheStatsBefore, meshopt_VertexFetchStatistics& vertexFetchStatsBefore, meshopt_OverdrawStatistics& overdrawStatsBefore) {
     /* Only doConvert() can handle triangle strips etc, in-place only triangles */
     if(mesh.primitive() != MeshPrimitive::Triangles) {
         Error{} << prefix << "expected a triangle mesh, got" << mesh.primitive();
@@ -226,6 +232,45 @@ bool convertInPlaceInternal(const char* prefix, MeshData& mesh, const SceneConve
     return true;
 }
 
+enum class AttributeEncoding: UnsignedInt {
+    Unencoded = 1 << 0,
+    EncodedStream = 1 << 1,
+    FilteredOctahedral = 1 << 2,
+    FilteredQuaternion = 1 << 3,
+    FilteredExponential = 1 << 4
+};
+
+typedef Containers::EnumSet<AttributeEncoding> AttributeEncodings;
+CORRADE_ENUMSET_OPERATORS(AttributeEncodings);
+
+/** @todo How do we advertize this to plugin users? AbstractSceneConverter has
+    no meshAttributeForName(). */
+constexpr MeshAttribute EncodedMeshVertexCount = meshAttributeCustom(0);
+
+bool isEncodedMesh(const MeshData& mesh) {
+    return mesh.vertexCount() == 0 &&
+        mesh.hasAttribute(EncodedMeshVertexCount);
+}
+
+bool isEncodedStream(VertexFormat format) {
+    return isVertexFormatImplementationSpecific(format) &&
+        vertexFormatUnwrap<AttributeEncodings>(format) == AttributeEncoding::EncodedStream;
+}
+
+bool isFilteredAttribute(VertexFormat format) {
+    return isVertexFormatImplementationSpecific(format) &&
+        vertexFormatUnwrap<AttributeEncodings>(format) <=
+            (AttributeEncoding::FilteredOctahedral | AttributeEncoding::FilteredQuaternion | AttributeEncoding::FilteredExponential);
+}
+
+/* To allow mixing uncompressed attributes with compressed attributes, they
+   both have to have placeholder attributes. Any mesh that has compressed
+   attributes mixed with regular attributes is invalid. */
+bool isUnencodedAttribute(VertexFormat format) {
+    return isVertexFormatImplementationSpecific(format) &&
+        vertexFormatUnwrap<AttributeEncodings>(format) == AttributeEncoding::Unencoded;
+}
+
 }
 
 bool MeshOptimizerSceneConverter::doConvertInPlace(MeshData& mesh) {
@@ -257,6 +302,17 @@ bool MeshOptimizerSceneConverter::doConvertInPlace(MeshData& mesh) {
         return false;
     }
 
+    if(configuration().value<bool>("decodeVertexBuffer") ||
+       configuration().value<bool>("decodeIndexBuffer") ||
+       configuration().value<bool>("encodeVertexBuffer") ||
+       configuration().value<bool>("encodeIndexBuffer") ||
+       configuration().value<bool>("decodeFilter") ||
+       configuration().value<bool>("encodeFilter"))
+    {
+        Error{} << "Trade::MeshOptimizerSceneConverter::convertInPlace(): mesh decoding, encoding and filtering can't be performed in-place, use convert() instead";
+        return false;
+    }
+
     /* Errors for non-indexed meshes and implementation-specific index buffers
        are printed directly in convertInPlaceInternal() */
     if(mesh.isIndexed()) {
@@ -277,7 +333,7 @@ bool MeshOptimizerSceneConverter::doConvertInPlace(MeshData& mesh) {
     Containers::Array<Vector3> positionStorage;
     Containers::StridedArrayView1D<const Vector3> positions;
     Containers::Optional<UnsignedInt> vertexSize;
-    if(!convertInPlaceInternal("Trade::MeshOptimizerSceneConverter::convertInPlace():", mesh, flags(), configuration(), positionStorage, positions, vertexSize, vertexCacheStatsBefore, vertexFetchStatsBefore, overdrawStatsBefore))
+    if(!optimize("Trade::MeshOptimizerSceneConverter::convertInPlace():", mesh, flags(), configuration(), positionStorage, positions, vertexSize, vertexCacheStatsBefore, vertexFetchStatsBefore, overdrawStatsBefore))
         return false;
 
     if(flags() & SceneConverterFlag::Verbose)
@@ -287,6 +343,184 @@ bool MeshOptimizerSceneConverter::doConvertInPlace(MeshData& mesh) {
 }
 
 Containers::Optional<MeshData> MeshOptimizerSceneConverter::doConvert(const MeshData& mesh) {
+    MeshData out = MeshTools::reference(mesh);
+
+    /** @todo What happens when we don't decode encoded attributes? */
+    if(configuration().value<bool>("decodeVertexBuffer") && out.attributeCount() && true /*isEncodedMesh()*/) {
+#if !MESHOPT_HAS_COMPRESSION
+        Error{} << "Trade::MeshOptimizerSceneConverter::convert(): vertex encoding requires meshoptimizer 0.14 or higher";
+        return Containers::NullOpt;
+#else
+        UnsignedInt encodedAttributeCount = 0;
+        for(UnsignedInt i = 0; i != out.attributeCount(); ++i)
+            encodedAttributeCount += UnsignedInt(isVertexFormatImplementationSpecific(out.attributeFormat(i)));
+
+        if(encodedAttributeCount > 0) {
+            if(encodedAttributeCount != out.attributeCount()) {
+                Error{} << "Trade::MeshOptimizerSceneConverter::convert(): TODO";
+                return Containers::NullOpt;
+            }
+
+            /* We can't support multiple compressed streams  */
+            // probably not since we can only assume that the entire blob is encoded.
+            // -> can't use offset + vertex count for data size
+            if(!MeshTools::isInterleaved(out)) {
+                Error{} << "Trade::MeshOptimizerSceneConverter::convert(): TODO";
+                return Containers::NullOpt;
+            }
+
+            Containers::Array<MeshAttributeData> attributes{NoInit, out.attributeCount()};
+            for(UnsignedInt i = 0; i != out.attributeCount(); ++i) {
+                const VertexFormat originalFormat = vertexFormatUnwrap<VertexFormat>(out.attributeFormat(i));
+                attributes[i] = MeshAttributeData{out.attributeName(i), originalFormat,
+                    out.attributeOffset(i), out.vertexCount(), out.attributeStride(i),
+                    out.attributeArraySize(i)};
+            }
+
+            Containers::ArrayView<const unsigned char> data = Containers::arrayCast<const unsigned char>(out.vertexData());
+            // TODO use MeshTools::interleavedData(out)?
+            // That includes the min offset, but that's for AFTER decoding
+            // and we're not guaranteed to have interleaved data
+
+            // TODO this won't work if the requirement is that compressed
+            // stride is always 0. we'll have to get the stride from
+            // offset + size of the last (= highest offset) attribute
+            const std::size_t vertexSize = out.attributeStride(0);
+            Containers::Array<char> decoded{NoInit, out.vertexCount()*vertexSize};
+            const int result = meshopt_decodeVertexBuffer(decoded.data(), out.vertexCount(), vertexSize, data.data(), data.size());
+            if(result != 0) {
+                /* An opaque number is as much info as we can get from meshopt */
+                Error{} << "Trade::MeshOptimizerSceneConverter::convert(): vertex buffer decoding failed with error" << result;
+                return Containers::NullOpt;
+            }
+
+            out = MeshData{out.primitive(),
+                // TODO is this a dangling reference when indexData is owned?
+                out.indexDataFlags(), out.indexData(), MeshIndexData{out.indices()},
+                std::move(decoded), std::move(attributes), out.vertexCount()};
+        }
+#endif
+    }
+
+    if(configuration().value<bool>("decodeIndexBuffer") && out.isIndexed() && true /*isEncodedMesh()*/) {
+#if !MESHOPT_HAS_COMPRESSION
+        Error{} << "Trade::MeshOptimizerSceneConverter::convert(): index encoding requires meshoptimizer 0.14 or higher";
+        return Containers::NullOpt;
+#else
+        /** @todo We need implementation-specific index type to detect encoded
+            data. One should be enough if MeshData also has index stride, then
+            we can detect the original type from the stride? Or should we stay
+            generic, in case we do need the original data stride in the future,
+            similar to vertex attribute stride? */
+        /** @todo Check that the index type is implementation-specific before
+            decoding */
+        if(true) {
+            // TODO unwarp from implementation-specific
+            const MeshIndexType indexType = out.indexType();
+            if(indexType == MeshIndexType::UnsignedByte) {
+                /* Decoding 8-bit indices is not supported by meshopt. However,
+                   encoding them is allowed because meshopt converts all
+                   indices to 32-bit. */
+                /** @todo Is this purely a user choice when decoding? If so, we
+                    could expose this as a config option. */
+                Error{} << "Trade::MeshOptimizerSceneConverter::convert(): can't decode 8-bit index buffer";
+                return Containers::NullOpt;
+            }
+
+            // TODO this may not exist for implementation-specific index types
+            const auto encoded = Containers::arrayCast<const unsigned char>(out.indices().asContiguous());
+
+            int result;
+            Containers::Array<char> decoded{NoInit, out.indexCount()*meshIndexTypeSize(indexType)};
+            if(out.primitive() == MeshPrimitive::Triangles) {
+                if(indexType == MeshIndexType::UnsignedInt) {
+                    UnsignedInt* output = reinterpret_cast<UnsignedInt*>(decoded.data());
+                    result = meshopt_decodeIndexBuffer(output, out.indexCount(), encoded.data(), encoded.size());
+                } else if(indexType == MeshIndexType::UnsignedShort) {
+                    UnsignedShort* output = reinterpret_cast<UnsignedShort*>(decoded.data());
+                    result = meshopt_decodeIndexBuffer(output, out.indexCount(), encoded.data(), encoded.size());
+                } else CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
+            } else {
+                /* Apart from picking the optimized decoding function for
+                   triangles, we don't care about the primitive type. Even if
+                   it's implementation-specific, we're just decoding integers. */
+                if(indexType == MeshIndexType::UnsignedInt) {
+                    UnsignedInt* output = reinterpret_cast<UnsignedInt*>(decoded.data());
+                    result = meshopt_decodeIndexSequence(output, out.indexCount(), encoded.data(), encoded.size());
+                } else if(indexType == MeshIndexType::UnsignedShort) {
+                    UnsignedShort* output = reinterpret_cast<UnsignedShort*>(decoded.data());
+                    result = meshopt_decodeIndexSequence(output, out.indexCount(), encoded.data(), encoded.size());
+                } else CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
+            }
+
+            if(result != 0) {
+                Error{} << "Trade::MeshOptimizerSceneConverter::convert(): index buffer decoding failed with error" << result;
+                return Containers::NullOpt;
+            }
+
+            const MeshIndexData indices{indexType, decoded};
+            out = MeshData{out.primitive(), std::move(decoded), indices,
+                // TODO is this a dangling reference when vertexData is owned?
+                out.vertexDataFlags(), out.vertexData(), out.releaseAttributeData(), out.vertexCount()};
+        }
+#endif
+    }
+
+    if(configuration().value<bool>("decodeFilter") && out.attributeCount() && true /*isFilteredMesh()*/) {
+#if !MESHOPT_HAS_FILTER_DECODING
+        Error{} << "Trade::MeshOptimizerSceneConverter::convert(): filter decoding requires meshoptimizer 0.14 or higher";
+        return Containers::NullOpt;
+#else
+        for(UnsignedInt i = 0; i != out.attributeCount(); ++i) {
+            if(isFilteredAttribute(out.attributeFormat(i))) {
+                const AttributeEncodings type = vertexFormatUnwrap<AttributeEncodings>(out.attributeFormat(i));
+
+                const auto data = out.mutableAttribute(i);
+                if(!data.isContiguous()) {
+                    // TODO error, interleaved not allowed
+                    return Containers::NullOpt;
+                }
+
+                const UnsignedInt stride = out.attributeStride(i);
+                VertexFormat format;
+                if(type == AttributeEncoding::FilteredOctahedral) {
+                    if(stride == 4) {
+                        format = VertexFormat::Vector4bNormalized;
+                    } else if(stride == 8) {
+                        format = VertexFormat::Vector4sNormalized;
+                    } else {
+                        // TODO error
+                        return Containers::NullOpt;
+                    }
+                    meshopt_decodeFilterOct(data.asContiguous(), out.vertexCount(), stride);
+                } else if(type == AttributeEncoding::FilteredQuaternion) {
+                    format = VertexFormat::Vector4;
+                    meshopt_decodeFilterQuat(data.asContiguous(), out.vertexCount(), stride);
+                } else if(type == AttributeEncoding::FilteredExponential) {
+                    if(stride == 4) {
+                        format = VertexFormat::Float;
+                    } else if(stride == 8) {
+                        format = VertexFormat::Vector2;
+                    } else if(stride == 12) {
+                        format = VertexFormat::Vector3;
+                    } else if(stride == 16) {
+                        format = VertexFormat::Vector4;
+                    } else {
+                        // TODO error
+                        return Containers::NullOpt;
+                    }
+                    meshopt_decodeFilterExp(data.asContiguous(), out.vertexCount(), stride);
+                } else {
+                    // TODO error
+                    return Containers::NullOpt;
+                }
+
+                // TODO set new format
+            }
+        }
+#endif
+    }
+
     /* If the mesh is indexed with an implementation-specific index type,
        interleave() won't be able to turn its index buffer into a contiguous
        one. So fail early if that's the case. The mesh doesn't necessarily have
@@ -297,9 +531,11 @@ Containers::Optional<MeshData> MeshOptimizerSceneConverter::doConvert(const Mesh
         return {};
     }
 
-    /* Make the mesh interleaved (with a contiguous index array) and owned
-       first */
-    MeshData out = MeshTools::owned(MeshTools::interleave(mesh));
+    /* Make the mesh interleaved (with a contiguous index array) and owned */
+    // TODO this will assert in the future for non-interleaved meshes with
+    // implementation-specific vertex formats
+    // is this programmer error or should we check for this?
+    out = MeshTools::owned(MeshTools::interleave(std::move(out)));
     CORRADE_INTERNAL_ASSERT(MeshTools::isInterleaved(out));
     CORRADE_INTERNAL_ASSERT(!out.isIndexed() || out.indices().isContiguous());
 
@@ -309,13 +545,29 @@ Containers::Optional<MeshData> MeshOptimizerSceneConverter::doConvert(const Mesh
         out = MeshTools::generateIndices(std::move(out));
     }
 
+    /** @todo What about other primitive types? */
+    // optimize() errors out if we don't have a triangle mesh
+    // we shouldn't care at this point
+    // but really we don't need it in optimize() if those functions aren't used
+    // (e.g. decode only). then for vertex-optimization only we don't need to care
+    // about the primitive type
+    // -> more granular checks, then decode
+
+    /* Convert to a contiguous index array if it's not */
+    if(out.isIndexed() && Short(meshIndexTypeSize(out.indexType())) != out.indexStride()) {
+        /** @todo This needs some more efficient tool, it's not wise to do a
+            minmax over the whole array just for a passthrough copy. It also
+            will drop the initial offset, which may be HIGHLY undesirable. */
+        out = MeshTools::compressIndices(std::move(out), out.indexType());
+    }
+
     meshopt_VertexCacheStatistics vertexCacheStatsBefore;
     meshopt_VertexFetchStatistics vertexFetchStatsBefore;
     meshopt_OverdrawStatistics overdrawStatsBefore;
     Containers::Array<Vector3> positionStorage;
     Containers::StridedArrayView1D<const Vector3> positions;
     Containers::Optional<UnsignedInt> vertexSize;
-    if(!convertInPlaceInternal("Trade::MeshOptimizerSceneConverter::convert():", out, flags(), configuration(), positionStorage, positions, vertexSize, vertexCacheStatsBefore, vertexFetchStatsBefore, overdrawStatsBefore))
+    if(!optimize("Trade::MeshOptimizerSceneConverter::convert():", out, flags(), configuration(), positionStorage, positions, vertexSize, vertexCacheStatsBefore, vertexFetchStatsBefore, overdrawStatsBefore))
         return Containers::NullOpt;
 
     if(configuration().value<bool>("simplify") ||
@@ -336,7 +588,7 @@ Containers::Optional<MeshData> MeshOptimizerSceneConverter::doConvert(const Mesh
         }
 
         Containers::Array<UnsignedInt> outputIndices;
-        Containers::arrayResize<Trade::ArrayAllocator>(outputIndices, NoInit, mesh.indexCount());
+        Containers::arrayResize<ArrayAllocator>(outputIndices, NoInit, out.indexCount());
 
         /* The nullptr at the end is not needed but without it GCC's
            -Wzero-as-null-pointer-constant fires due to the default argument
@@ -358,15 +610,15 @@ Containers::Optional<MeshData> MeshOptimizerSceneConverter::doConvert(const Mesh
             );
         }
 
-        Containers::arrayResize<Trade::ArrayAllocator>(outputIndices, vertexCount);
+        Containers::arrayResize<ArrayAllocator>(outputIndices, vertexCount);
 
         /* Take the original mesh vertex data with the reduced index buffer and
            call combineIndexedAttributes() to throw away the unused vertices */
         /** @todo provide a way to use the new vertices with the original
             vertex buffer for LODs */
         MeshIndexData indices{outputIndices};
-        out = Trade::MeshData{out.primitive(),
-            Containers::arrayAllocatorCast<char, Trade::ArrayAllocator>(std::move(outputIndices)), indices,
+        out = MeshData{out.primitive(),
+            Containers::arrayAllocatorCast<char, ArrayAllocator>(std::move(outputIndices)), indices,
             out.releaseVertexData(), out.releaseAttributeData()};
         out = MeshTools::combineIndexedAttributes({out});
 
@@ -379,6 +631,182 @@ Containers::Optional<MeshData> MeshOptimizerSceneConverter::doConvert(const Mesh
     /* Print before & after stats if verbose output is requested */
     if(flags() & SceneConverterFlag::Verbose)
         analyzePost("Trade::MeshOptimizerSceneConverter::convert():", out, configuration(), positions, vertexSize, vertexCacheStatsBefore, vertexFetchStatsBefore, overdrawStatsBefore);
+
+    if(configuration().value<bool>("encodeFilter")) {
+#if !MESHOPT_HAS_FILTER_ENCODING
+        Error{} << "Trade::MeshOptimizerSceneConverter::convert(): filter encoding requires meshoptimizer 0.17 or higher";
+        return Containers::NullOpt;
+#else
+        /** @todo
+
+        Which attributes are filtered how? Check gltfpack source
+
+        config option:
+            encodeFilterAttribute=<MeshAttribute>
+        add some sane defaults
+        this should work with implementation-specific values
+
+        meshopt_encodeFilterOct for unit vectors -> normal, tangent, bitangent (input is tightly packed Vector4, ehhhh)
+        meshopt_encodeFilterQuat for normalized quaternions -> no known VertexFormat
+        meshopt_encodeFilterExp for arbitrary float vectors -> position, color?, texture coordinates?
+
+        Do we unpack interleaved attributes or just return with an error?
+
+        Output must be separated into one blob per filtered attribute (multiple of the same could be interleaved?), and
+        one blob with the rest, but packed again. Sigh. Is there something in MeshTools?
+        */
+
+        for(UnsignedInt i = 0; i != configuration().valueCount("encodeFilterAttribute"); ++i) {
+            // TODO use attribute indices here, there is no fromString
+            // check range first :eyes:
+            const MeshAttribute name = configuration().value<MeshAttribute>("encodeFilterAttribute", i);
+            for(UnsignedInt j = 0; j != out.attributeCount(name); ++j) {
+                VertexFormat format = out.attributeFormat(name, j);
+                if(isVertexFormatImplementationSpecific(format)) {
+                    // TODO warning
+                    continue;
+                }
+
+                if(vertexFormatComponentFormat(format) != VertexFormat::Float) {
+                    // TODO warning
+                    continue;
+                }
+
+                const auto data = Containers::arrayCast<Float>(out.attribute(name, j));
+                if(!data.isContiguous()) {
+                    // TODO deinterleave, pad to Vector4 for normal, tangent, bitangent
+                    continue;
+                }
+
+                AttributeEncodings type;
+                Containers::Array<char> filtered;
+                if(name == MeshAttribute::Normal || name == MeshAttribute::Tangent || name == MeshAttribute::Bitangent) {
+                    // TODO meshopt expects they're normalized, document this
+                    type = AttributeEncoding::FilteredOctahedral;
+                    // TODO how to make this configurable? encodeFilterOctahedralStride, encodeFilterOctahedralBits
+                    format = VertexFormat::Vector4bNormalized; // Vector4sNormalized
+                    const UnsignedInt stride = vertexFormatSize(format);
+                    const UnsignedInt bits = 16;
+                    filtered = Containers::Array<char>{NoInit, out.vertexCount()*stride};
+                    meshopt_encodeFilterOct(filtered, out.vertexCount(), stride, bits, data.asContiguous());
+                } else {
+                    type = AttributeEncoding::FilteredExponential;
+                    // TODO encodeFilterExponentialBits
+                    const UnsignedInt stride = vertexFormatSize(format);
+                    const UnsignedInt bits = 24;
+                    filtered = Containers::Array<char>{NoInit, out.vertexCount()*stride};
+                    meshopt_encodeFilterExp(filtered, out.vertexCount(), stride, bits, data.asContiguous());
+                }
+
+                // TODO combine data
+                // TODO set new data and formats
+                format = vertexFormatWrap(type);
+            }
+        }
+#endif
+    }
+
+#if MESHOPT_HAS_COMPRESSION
+    if(configuration().value<bool>("encodeVertexBuffer") && out.attributeCount()) {
+        Containers::Array<MeshAttributeData> attributes{NoInit, out.attributeCount()};
+        for(UnsignedInt i = 0; i != out.attributeCount(); ++i) {
+            // TODO how to handle implementation-specific formats?
+            const VertexFormat encodedFormat = !isVertexFormatImplementationSpecific(out.attributeFormat(i)) ?
+                vertexFormatWrap(out.attributeFormat(i)) : out.attributeFormat(i);
+            attributes[i] = MeshAttributeData{out.attributeName(i), encodedFormat,
+                out.attributeOffset(i), out.vertexCount(), out.attributeStride(i),
+                out.attributeArraySize(i)};
+        }
+
+        // TODO which attributes to encode? -> config option
+        // encodeVertexBufferAttribute=<MeshAttribute>
+        // add some sane defaults
+
+        // TODO does it make any sense to allow encoding > 1 vertex streams?
+        // we'd have to identify which blobs belong together, is that even
+        // reasonably doable?
+        // data is already interleaved... no use trying
+
+        // TODO
+        //assert(vertex_size > 0 && vertex_size <= 256);
+        //assert(vertex_size % 4 == 0);
+
+        /* If not set, this returns 0 -- the first codec version. Decodable by
+           all previous and future versions. */
+        const int version = configuration().value<int>("encodeVertexVersion");
+        /** @todo meshopt asserts that version is valid, should we produce an
+            error to prevent the assert? Then we'd have to update the check for
+            every new meshopt version that updates the encoding algorithm.
+            We could use MESHOPTIMIZER_VERSION to at least perform the check
+            on known library versions. */
+        meshopt_encodeVertexVersion(version);
+
+        const std::size_t vertexSize = out.attributeStride(0);
+        const std::size_t maxEncodedSize = meshopt_encodeVertexBufferBound(out.vertexCount(), vertexSize);
+        // TODO do we really want the interleaved data? it includes the min offset, we'd have to
+        // patch that...
+        const Containers::StridedArrayView2D<const char> interleavedData = MeshTools::interleavedData(out);
+
+        Containers::Array<char> encoded{NoInit, maxEncodedSize};
+        /* TODO does data() work if all attributes start at a non-0 offset? */
+        const std::size_t encodedSize = meshopt_encodeVertexBuffer(reinterpret_cast<unsigned char*>(encoded.data()), encoded.size(), static_cast<const unsigned char*>(interleavedData.data()), out.vertexCount(), vertexSize);
+
+        /* Return value is 0 when the buffer doesn't hold enough space, but we
+           got the upper bound from meshopt */
+        CORRADE_INTERNAL_ASSERT(encodedSize > 0 && encodedSize <= encoded.size());
+
+        Containers::arrayResize(encoded, encodedSize);
+        Containers::arrayShrink(encoded);
+
+        out = MeshData{out.primitive(),
+            out.indexDataFlags(), out.indexData(), MeshIndexData{out.indices()},
+            std::move(encoded), std::move(attributes), out.vertexCount()};
+    }
+
+    if(configuration().value<bool>("encodeIndexBuffer") && out.isIndexed()) {
+        CORRADE_INTERNAL_ASSERT(out.primitive() == MeshPrimitive::Triangles);
+
+        if(out.indexCount()%3 != 0) {
+            // TODO error
+            return Containers::NullOpt;
+        }
+
+        const int version = configuration().value<int>("encodeIndexVersion");
+        meshopt_encodeIndexVersion(version);
+
+        const std::size_t maxEncodedSize = meshopt_encodeIndexBufferBound(out.indexCount(), out.vertexCount());
+
+        Containers::Array<char> encoded{NoInit, maxEncodedSize};
+        std::size_t encodedSize;
+        if(out.indexType() == MeshIndexType::UnsignedInt) {
+            encodedSize = meshopt_encodeIndexBuffer(reinterpret_cast<unsigned char*>(encoded.data()), encoded.size(), out.indices<UnsignedInt>().data(), out.indexCount());
+        } else if(out.indexType() == MeshIndexType::UnsignedShort) {
+            encodedSize = meshopt_encodeIndexBuffer(reinterpret_cast<unsigned char*>(encoded.data()), encoded.size(), out.indices<UnsignedShort>().data(), out.indexCount());
+        } else if(out.indexType() == MeshIndexType::UnsignedByte) {
+            encodedSize = meshopt_encodeIndexBuffer(reinterpret_cast<unsigned char*>(encoded.data()), encoded.size(), out.indices<UnsignedByte>().data(), out.indexCount());
+        } else CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
+
+        /* Return value is 0 when the buffer doesn't hold enough space, but we
+           got the upper bound from meshopt */
+        CORRADE_INTERNAL_ASSERT(encodedSize > 0 && encodedSize <= encoded.size());
+
+        Containers::arrayResize(encoded, encodedSize);
+        Containers::arrayShrink(encoded);
+
+        // TODO set implementation-specific index type
+        // TODO set stride to 0
+        // WARNING meshopt converts all index data to 32-bit, the output should
+        // probably always be UnsignedInt? Or is this pure user choice? If so,
+        // set it to UnsignedShort if the original type was that, and force
+        // UnsignedByte to UnsignedShort because 8-bit decoding is not allowed.
+        // BETTER use min of type and vertexCount as an upper limit
+        MeshIndexType indexType = MeshIndexType::UnsignedInt;
+
+        const MeshIndexData indices{indexType, encoded};
+        out = MeshData{out.primitive(), std::move(encoded), indices,
+            out.vertexDataFlags(), out.vertexData(), out.releaseAttributeData(), out.vertexCount()};
+    }
+#endif
 
     /* GCC 4.8 needs an explicit conversion, otherwise it tries to copy the
        thing and fails */

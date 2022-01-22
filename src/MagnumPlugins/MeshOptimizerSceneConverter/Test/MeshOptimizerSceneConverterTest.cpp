@@ -33,6 +33,7 @@
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/MeshTools/CompressIndices.h>
 #include <Magnum/MeshTools/Interleave.h>
+#include <Magnum/MeshTools/Reference.h>
 #include <Magnum/Primitives/Circle.h>
 #include <Magnum/Primitives/Icosphere.h>
 #include <Magnum/Primitives/Square.h>
@@ -85,9 +86,36 @@ struct MeshOptimizerSceneConverterTest: TestSuite::Tester {
 
     void simplifyVerbose();
 
+    void decodeEncodeInPlace();
+
+    void decodeVertexBuffer();
+    void encodeVertexBuffer();
+    /** @todo
+        - no vertex data
+        - no attributes
+        - no encoded attributes
+        - not all attributes are encoded
+        - attributes not interleaved */
+
+    template<class T> void decodeIndexBuffer();
+    template<class T> void encodeIndexBuffer();
+    /** @todo
+        - no index data
+        - no encoded index data */
+
+    /** @todo
+        - decode vertices + indices
+        - encode vertices + indices
+        - decoding + encoding
+        - decoding + other options + encoding */
+
     /* Explicitly forbid system-wide plugin dependencies */
     PluginManager::Manager<AbstractSceneConverter> _manager{"nonexistent"};
 };
+
+/* Explicit specializations have to be declared in the namespace of the
+   containing struct */
+template<> void MeshOptimizerSceneConverterTest::decodeIndexBuffer<UnsignedByte>();
 
 const struct {
     const char* name;
@@ -95,6 +123,16 @@ const struct {
 } SimplifyErrorData[] {
     {"", "simplify"},
     {"sloppy", "simplifySloppy"}
+};
+
+const struct {
+    const char* name;
+    const char* option;
+} DecodeEncodeInPlaceData[] {
+    {"decode vertices", "decodeVertexBuffer"},
+    {"decode indices", "decodeIndexBuffer"},
+    {"encode vertices", "encodeVertexBuffer"},
+    {"encode indices", "encodeIndexBuffer"}
 };
 
 MeshOptimizerSceneConverterTest::MeshOptimizerSceneConverterTest() {
@@ -155,6 +193,21 @@ MeshOptimizerSceneConverterTest::MeshOptimizerSceneConverterTest() {
         &MeshOptimizerSceneConverterTest::simplifySloppy<UnsignedShort>,
         &MeshOptimizerSceneConverterTest::simplifySloppy<UnsignedInt>,
         &MeshOptimizerSceneConverterTest::simplifyVerbose});
+
+    addInstancedTests({&MeshOptimizerSceneConverterTest::decodeEncodeInPlace},
+        Containers::arraySize(DecodeEncodeInPlaceData));
+
+    addTests({
+        &MeshOptimizerSceneConverterTest::decodeVertexBuffer,
+        &MeshOptimizerSceneConverterTest::encodeVertexBuffer});
+
+    addTests({
+        &MeshOptimizerSceneConverterTest::decodeIndexBuffer<UnsignedByte>,
+        &MeshOptimizerSceneConverterTest::decodeIndexBuffer<UnsignedShort>,
+        &MeshOptimizerSceneConverterTest::decodeIndexBuffer<UnsignedInt>,
+        &MeshOptimizerSceneConverterTest::encodeIndexBuffer<UnsignedByte>,
+        &MeshOptimizerSceneConverterTest::encodeIndexBuffer<UnsignedShort>,
+        &MeshOptimizerSceneConverterTest::encodeIndexBuffer<UnsignedInt>});
 
     /* Load the plugin directly from the build tree. Otherwise it's static and
        already loaded. */
@@ -343,9 +396,7 @@ void MeshOptimizerSceneConverterTest::inPlaceOptimizeNone() {
 
     /* Make an immutable reference to verify that mutable data aren't required
        when everything is disabled */
-    MeshData icosphereImmutable{icosphere.primitive(),
-        {}, icosphere.indexData(), MeshIndexData{icosphere.indices()},
-        {}, icosphere.vertexData(), Trade::meshAttributeDataNonOwningArray(icosphere.attributeData())};
+    MeshData icosphereImmutable = MeshTools::reference(icosphere);
 
     /* This shouldn't change anything */
     CORRADE_VERIFY(converter->convertInPlace(icosphereImmutable));
@@ -1130,6 +1181,152 @@ void MeshOptimizerSceneConverterTest::simplifyVerbose() {
     overdraw 1 -> 1
 )";
     CORRADE_COMPARE(out.str(), expected);
+}
+
+void MeshOptimizerSceneConverterTest::decodeEncodeInPlace() {
+    auto&& data = DecodeEncodeInPlaceData[testCaseInstanceId()];
+    setTestCaseDescription(data.name);
+
+    Containers::Pointer<AbstractSceneConverter> converter = _manager.instantiate("MeshOptimizerSceneConverter");
+    converter->configuration().setValue("optimizeVertexCache", false);
+    converter->configuration().setValue("optimizeOverdraw", false);
+    converter->configuration().setValue("optimizeVertexFetch", false);
+    converter->configuration().setValue(data.option, true);
+
+    const UnsignedShort indexData[3]{};
+    MeshData mesh{MeshPrimitive::Triangles,
+        {}, indexData, MeshIndexData{indexData},
+        nullptr, {}, 1};
+    std::ostringstream out;
+    Error redirectError{&out};
+    CORRADE_VERIFY(!converter->convertInPlace(mesh));
+    CORRADE_COMPARE(out.str(),
+        "Trade::MeshOptimizerSceneConverter::convertInPlace(): mesh decoding and encoding can't be performed in-place, use convert() instead\n");
+}
+
+void MeshOptimizerSceneConverterTest::decodeVertexBuffer() {
+    Containers::Pointer<AbstractSceneConverter> converter = _manager.instantiate("MeshOptimizerSceneConverter");
+    converter->configuration().setValue("optimizeVertexCache", false);
+    converter->configuration().setValue("optimizeOverdraw", false);
+    converter->configuration().setValue("optimizeVertexFetch", false);
+    /* Disabled by default */
+    CORRADE_VERIFY(!converter->configuration().value<bool>("decodeVertexBuffer"));
+    converter->configuration().setValue("decodeVertexBuffer", true);
+
+    /** @todo */
+
+    CORRADE_VERIFY(true);
+}
+
+void MeshOptimizerSceneConverterTest::encodeVertexBuffer() {
+    Containers::Pointer<AbstractSceneConverter> converter = _manager.instantiate("MeshOptimizerSceneConverter");
+    converter->configuration().setValue("optimizeVertexCache", false);
+    converter->configuration().setValue("optimizeOverdraw", false);
+    converter->configuration().setValue("optimizeVertexFetch", false);
+    /* Disabled by default */
+    CORRADE_VERIFY(!converter->configuration().value<bool>("encodeVertexBuffer"));
+    converter->configuration().setValue("encodeVertexBuffer", true);
+
+    /** @todo */
+
+    CORRADE_VERIFY(true);
+}
+
+template<> void MeshOptimizerSceneConverterTest::decodeIndexBuffer<UnsignedByte>() {
+    setTestCaseTemplateName(Math::TypeTraits<UnsignedByte>::name());
+
+    Containers::Pointer<AbstractSceneConverter> converter = _manager.instantiate("MeshOptimizerSceneConverter");
+    converter->configuration().setValue("optimizeVertexCache", false);
+    converter->configuration().setValue("optimizeOverdraw", false);
+    converter->configuration().setValue("optimizeVertexFetch", false);
+    converter->configuration().setValue("decodeIndexBuffer", true);
+
+    const UnsignedByte indexData[3]{};
+    /** @todo Implementation-specific type, stride 0 */
+    const MeshIndexData indices{MeshIndexType::UnsignedByte, indexData};
+    MeshData mesh{MeshPrimitive::Triangles,
+        {}, indexData, indices,
+        nullptr, {}, 1};
+    std::ostringstream out;
+    Error redirectError{&out};
+    CORRADE_VERIFY(!converter->convert(mesh));
+    CORRADE_COMPARE(out.str(), "Trade::MeshOptimizerSceneConverter::convert(): can't decode 8-bit index buffer\n");
+}
+
+template<class T> void MeshOptimizerSceneConverterTest::decodeIndexBuffer() {
+    setTestCaseTemplateName(Math::TypeTraits<T>::name());
+
+    Containers::Pointer<AbstractSceneConverter> converter = _manager.instantiate("MeshOptimizerSceneConverter");
+    converter->configuration().setValue("optimizeVertexCache", false);
+    converter->configuration().setValue("optimizeOverdraw", false);
+    converter->configuration().setValue("optimizeVertexFetch", false);
+    /* Disabled by default */
+    CORRADE_VERIFY(!converter->configuration().value<bool>("decodeIndexBuffer"));
+    converter->configuration().setValue("decodeIndexBuffer", true);
+
+    /** @todo */
+
+    CORRADE_VERIFY(true);
+}
+
+template<class T> void MeshOptimizerSceneConverterTest::encodeIndexBuffer() {
+    setTestCaseTemplateName(Math::TypeTraits<T>::name());
+
+    Containers::Pointer<AbstractSceneConverter> converter = _manager.instantiate("MeshOptimizerSceneConverter");
+    converter->configuration().setValue("optimizeVertexCache", false);
+    converter->configuration().setValue("optimizeOverdraw", false);
+    converter->configuration().setValue("optimizeVertexFetch", false);
+    /* Disabled by default */
+    CORRADE_VERIFY(!converter->configuration().value<bool>("encodeIndexBuffer"));
+    converter->configuration().setValue("encodeIndexBuffer", true);
+
+    /** @todo Use T, maybe skip the icosphereSolid and construct MeshData
+        manually */
+    const UnsignedInt indices[] {
+        12, 13, 14, 15, 16, 12, 17, 18, 19, 17, 20, 21, 22, 23, 24, 22
+    };
+
+    const Vector3 positionsOrNormals[] {
+        {0.0f, -0.525731f, 0.850651f},
+        {0.850651f, 0.0f, 0.525731f},
+        {0.850651f, 0.0f, -0.525731f},
+        {-0.850651f, 0.0f, -0.525731f}
+    };
+
+    MeshData icosphere = Primitives::icosphereSolid(1);
+    CORRADE_COMPARE_AS(icosphere.indices<UnsignedInt>().prefix(16),
+        Containers::arrayView(indices),
+        TestSuite::Compare::Container);
+    CORRADE_COMPARE_AS(icosphere.attribute<Vector3>(MeshAttribute::Position).prefix(4),
+        Containers::arrayView(positionsOrNormals),
+        TestSuite::Compare::Container);
+    CORRADE_COMPARE_AS(icosphere.attribute<Vector3>(MeshAttribute::Normal).prefix(4),
+        Containers::arrayView(positionsOrNormals),
+        TestSuite::Compare::Container);
+
+    const auto converted = converter->convert(icosphere);
+    CORRADE_VERIFY(converted);
+
+    CORRADE_COMPARE(converted->indexCount(), icosphere.indexCount());
+    /** @todo Type will be implementation-specific */
+    /** @todo Type doesn't have to be the original type, can be smaller */
+    CORRADE_COMPARE(converted->indexType(), MeshIndexType::UnsignedInt);
+    /** @todo Stride will be 0 */
+    CORRADE_COMPARE(converted->indexOffset(), 0);
+
+    /* Vertex data is unchanged */
+    CORRADE_COMPARE_AS(converted->attribute<Vector3>(MeshAttribute::Position).prefix(4),
+        Containers::arrayView(positionsOrNormals),
+        TestSuite::Compare::Container);
+    CORRADE_COMPARE_AS(converted->attribute<Vector3>(MeshAttribute::Normal).prefix(4),
+        Containers::arrayView(positionsOrNormals),
+        TestSuite::Compare::Container);
+
+    /** @todo decode, use meshopt directly? */
+
+    CORRADE_COMPARE_AS(icosphere.indices<UnsignedInt>().prefix(16),
+        Containers::arrayView(indices),
+        TestSuite::Compare::Container);
 }
 
 }}}}
