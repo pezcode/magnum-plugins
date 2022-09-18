@@ -149,7 +149,8 @@ struct AssimpImporter::File {
     Containers::Array<Int> meshSkins;
     bool mergeSkins = false;
     /* For each mesh, map from mesh-relative bones to merged bone list */
-    Containers::Array<Containers::Array<UnsignedInt>> boneMap;
+    Containers::Array<UnsignedInt> boneMap;
+    Containers::Array<std::size_t> boneMapOffsets;
     Containers::Array<const aiBone*> mergedBones;
 
     UnsignedInt imageImporterId = ~UnsignedInt{};
@@ -580,18 +581,20 @@ void AssimpImporter::doOpenData(Containers::Array<char>&& data, DataFlags) {
 
     /* De-duplicate bones across all skinned meshes */
     if(_f->mergeSkins) {
-        size_t numBones = 0;
+        std::size_t numBones = 0;
         for(UnsignedInt mesh: _f->meshesWithBones)
             numBones += _f->scene->mMeshes[mesh]->mNumBones;
         arrayReserve(_f->mergedBones, numBones);
 
-        _f->boneMap = Containers::Array<Containers::Array<UnsignedInt>>{ValueInit, _f->meshesWithBones.size()};
+        _f->boneMap = Containers::Array<UnsignedInt>{NoInit, numBones};
+        _f->boneMapOffsets = Containers::Array<std::size_t>{NoInit, _f->meshesWithBones.size()};
+        std::size_t currentOffset = 0;
         for(std::size_t s = 0; s < _f->meshesWithBones.size(); ++s) {
             const UnsignedInt id = _f->meshesWithBones[s];
             const aiMesh* mesh = _f->scene->mMeshes[id];
-            auto& map = _f->boneMap[s];
-            arrayReserve(map, mesh->mNumBones);
-            for(const aiBone* bone: Containers::arrayView(mesh->mBones, mesh->mNumBones)) {
+            auto map = _f->boneMap.slice(currentOffset, currentOffset + mesh->mNumBones);
+            for(std::size_t b = 0; b != mesh->mNumBones; ++b) {
+                const aiBone* bone = mesh->mBones[b];
                 Int index = -1;
                 for(std::size_t i = 0; i != _f->mergedBones.size(); ++i) {
                     const aiBone* other = _f->mergedBones[i];
@@ -606,8 +609,10 @@ void AssimpImporter::doOpenData(Containers::Array<char>&& data, DataFlags) {
                     index = _f->mergedBones.size();
                     arrayAppend(_f->mergedBones, bone);
                 }
-                arrayAppend(map, index);
+                map[b] = index;
             }
+            _f->boneMapOffsets[s] = currentOffset;
+            currentOffset += mesh->mNumBones;
         }
     }
 }
@@ -1189,8 +1194,12 @@ Containers::Optional<MeshData> AssimpImporter::doMesh(const UnsignedInt id, Unsi
         CORRADE_INTERNAL_ASSERT(skin != -1);
         std::fill(jointCounts.begin(), jointCounts.end(), 0);
 
+        const Containers::ArrayView<const UnsignedInt> boneMap = _f->mergeSkins ?
+            _f->boneMap.exceptPrefix(_f->boneMapOffsets[skin]).prefix(mesh->mNumBones) :
+            Containers::ArrayView<const UnsignedInt>{};
+
         for(std::size_t b = 0; b != mesh->mNumBones; ++b) {
-            const UnsignedInt boneIndex = _f->mergeSkins ? _f->boneMap[skin][b] : b;
+            const UnsignedInt boneIndex = _f->mergeSkins ? boneMap[b] : b;
             /* Use the original weights, we only need the remapping to patch
                the joint id */
             const aiBone* bone = mesh->mBones[b];
