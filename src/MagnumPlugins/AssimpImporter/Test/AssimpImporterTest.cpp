@@ -1486,7 +1486,11 @@ void AssimpImporterTest::skinMerge() {
     Containers::Optional<SceneData> scene = importer->scene(0);
     CORRADE_VERIFY(scene);
 
-    for(const char* meshName: {"Mesh_1", "Mesh_2"}) {
+    constexpr Containers::StringView meshNames[]{
+        "Mesh_1"_s, "Mesh_2"_s, "Mesh_3"_s
+    };
+
+    for(Containers::StringView meshName: meshNames) {
         CORRADE_ITERATION(meshName);
 
         Long meshObject = importer->objectForName(meshName);
@@ -1510,6 +1514,12 @@ void AssimpImporterTest::skinMerge() {
         importer->objectForName("A"),
         importer->objectForName("D"),
         importer->objectForName("E"),
+        /* Skin3 */
+        importer->objectForName("E"),
+        importer->objectForName("D"),
+        importer->objectForName("C"),
+        importer->objectForName("B"),
+        importer->objectForName("A"),
     };
     const Matrix4 originalMatrices[] {
         /* Skin1 */
@@ -1517,17 +1527,25 @@ void AssimpImporterTest::skinMerge() {
         Matrix4::translation(Vector3::zAxis()),
         Matrix4::translation(Vector3::yAxis()),
         /* Skin2 */
-        Matrix4::translation(Vector3::xAxis()),
+        Matrix4::translation(Vector3::xAxis()), /* Duplicate of joint 0 */
         Matrix4::translation(Vector3::yAxis()),
-        Matrix4::translation(Vector3::zAxis())
+        Matrix4::translation(Vector3::zAxis()),
+        /* Skin3 */
+        Matrix4::scaling(Vector3::xScale(2.0f)),
+        Matrix4::translation(Vector3::yAxis()), /* Duplicate of joint 4 */
+        Matrix4::translation(Vector3::yAxis()), /* Duplicate of joint 2 */
+        Matrix4::translation(Vector3::zAxis()), /* Duplicate of joint 1 */
+        Matrix4::translation(Vector3::xAxis()), /* Duplicate of joint 0 */
     };
     /* Relying on the skin order here (Skin2 merged after Skin1), this *might*
        break in the future */
     constexpr UnsignedInt mergeOrder[]{
-        /* Skin1, all joints */
+        /* Skin1, by definition no duplicates */
         0, 1, 2,
-        /* Skin 2, joint 3 is a duplicate of joint 0 */
-        4, 5
+        /* Skin 2, one duplicate */
+        4, 5,
+        /* Skin 3, four duplicates */
+        6
     };
 
     Containers::ArrayView<const UnsignedInt> joints = skin->joints();
@@ -1540,6 +1558,45 @@ void AssimpImporterTest::skinMerge() {
         CORRADE_COMPARE(joints[i], originalJoints[mergeOrder[i]]);
         CORRADE_VERIFY(!scene->meshesMaterialsFor(joints[i]));
         CORRADE_COMPARE(inverseBindMatrices[i], originalMatrices[mergeOrder[i]]);
+    }
+
+    if(ASSIMP_VERSION >= 20220502 && _assimpVersion < 524)
+        CORRADE_SKIP("Skinning attribute import is broken with the current version of Assimp");
+
+    // TODO Assimp remaps these so e.g. weights is different for the last mesh
+    // sort???
+    constexpr Vector4ui remappedJoints[]{
+        {0, 1, 2, 0},
+        {0, 3, 4, 0},
+        {0, 1, 2, 3}
+    };
+    constexpr Vector4 weights{0.5f, 0.3f, 0.2f, 0.0f};
+
+    const MeshAttribute jointsAttribute = importer->meshAttributeForName("JOINTS");
+    const MeshAttribute weightsAttribute = importer->meshAttributeForName("WEIGHTS");
+    CORRADE_VERIFY(jointsAttribute != MeshAttribute{});
+    CORRADE_VERIFY(weightsAttribute != MeshAttribute{});
+
+    for(size_t i = 0; i != Containers::arraySize(meshNames); ++i) {
+        const Containers::StringView meshName = meshNames[i];
+        CORRADE_ITERATION(meshName);
+
+        Long meshObject = importer->objectForName(meshName);
+        CORRADE_VERIFY(meshObject != -1);
+        const auto mesh = scene->meshesMaterialsFor(meshObject);
+        CORRADE_COMPARE(mesh.size(), 1);
+        const auto meshData = importer->mesh(mesh.front().first());
+        CORRADE_VERIFY(meshData);
+        CORRADE_COMPARE(meshData->attributeCount(jointsAttribute), 1);
+        CORRADE_COMPARE(meshData->attributeCount(weightsAttribute), 1);
+        CORRADE_COMPARE(meshData->attributeFormat(jointsAttribute), VertexFormat::Vector4ui);
+        CORRADE_COMPARE(meshData->attributeFormat(weightsAttribute), VertexFormat::Vector4);
+        CORRADE_COMPARE_AS(meshData->attribute<Vector4ui>(jointsAttribute),
+            Containers::arrayView(remappedJoints).slice(i, i + 1),
+            TestSuite::Compare::Container);
+        CORRADE_COMPARE_AS(meshData->attribute<Vector4>(weightsAttribute),
+            Containers::arrayView(&weights, 1),
+            TestSuite::Compare::Container);
     }
 }
 
@@ -2985,6 +3042,10 @@ void AssimpImporterTest::meshSkinningAttributesDummyWeightRemoval() {
 void AssimpImporterTest::meshSkinningAttributesMerge() {
     if(ASSIMP_VERSION >= 20220502 && _assimpVersion < 524)
         CORRADE_SKIP("Skinning attribute import is broken with the current version of Assimp");
+
+    /* There's a less basic test for this in skinMerge() but that requires glTF
+       support. Hand-crafting Collada files is pain, but this should at least
+       test that nothing explodes on older versions and non-glTF files. */
 
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("AssimpImporter");
     importer->configuration().setValue("mergeSkins", true);

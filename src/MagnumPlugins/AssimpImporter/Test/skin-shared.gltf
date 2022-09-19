@@ -6,7 +6,7 @@
     "scenes" : [
         {
             "name" : "Scene",
-            "nodes" : [ 0, 5, 6 ]
+            "nodes" : [ 0, 5, 6, 7 ]
         }
     ],
     "nodes": [
@@ -34,6 +34,11 @@
             "mesh" : 1,
             "name" : "Mesh_2",
             "skin" : 1
+        },
+        {
+            "mesh" : 2,
+            "name" : "Mesh_3",
+            "skin" : 2
         }
     ],
     "skins": [
@@ -46,6 +51,11 @@
             "name": "Skin2",
             "inverseBindMatrices": 1,
             "joints": [0, 3, 4]
+        },
+        {
+            "name": "Skin3",
+            "inverseBindMatrices": 2,
+            "joints": [4, 3, 2, 1, 0]
         }
     ],
     "meshes" : [
@@ -54,11 +64,11 @@
             "primitives" : [
                 {
                     "attributes" : {
-                        "POSITION" : 2,
-                        "JOINTS_0" : 3,
-                        "WEIGHTS_0" : 4
+                        "POSITION" : 3,
+                        "JOINTS_0" : 4,
+                        "WEIGHTS_0" : 7
                     },
-                    "indices" : 5
+                    "indices" : 8
                 }
             ]
         },
@@ -67,18 +77,31 @@
             "primitives" : [
                 {
                     "attributes" : {
-                        "POSITION" : 2,
-                        "JOINTS_0" : 3,
-                        "WEIGHTS_0" : 4
+                        "POSITION" : 3,
+                        "JOINTS_0" : 5,
+                        "WEIGHTS_0" : 7
                     },
-                    "indices" : 5
+                    "indices" : 8
+                }
+            ]
+        },
+        {
+            "name" : "SkinnedMesh3_mesh",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 3,
+                        "JOINTS_0" : 6,
+                        "WEIGHTS_0" : 7
+                    },
+                    "indices" : 8
                 }
             ]
         }
     ],
     "buffers": [
         {
-            "byteLength": 426,
+            "byteLength": 762,
             "uri": "skin-shared.bin"
         }
     ],
@@ -96,21 +119,36 @@
         {
             "buffer": 0,
             "byteOffset": 384,
+            "byteLength": 320
+        },
+        {
+            "buffer": 0,
+            "byteOffset": 704,
             "byteLength": 12
         },
         {
             "buffer": 0,
-            "byteOffset": 396,
+            "byteOffset": 716,
             "byteLength": 8
         },
         {
             "buffer": 0,
-            "byteOffset": 404,
+            "byteOffset": 724,
+            "byteLength": 8
+        },
+        {
+            "buffer": 0,
+            "byteOffset": 732,
+            "byteLength": 8
+        },
+        {
+            "buffer": 0,
+            "byteOffset": 740,
             "byteLength": 16
         },
         {
             "buffer": 0,
-            "byteOffset": 420,
+            "byteOffset": 756,
             "byteLength": 6
         }
     ],
@@ -133,27 +171,48 @@
             "bufferView": 2,
             "byteOffset": 0,
             "componentType": 5126,
+            "count": 5,
+            "type": "MAT4"
+        },
+        {
+            "bufferView": 3,
+            "byteOffset": 0,
+            "componentType": 5126,
             "count": 1,
             "type": "VEC3",
             "min": [ 1.2, 3.4, 5.6 ],
             "max": [ 1.2, 3.4, 5.6 ]
         },
         {
-            "bufferView": 3,
+            "bufferView": 4,
             "byteOffset": 0,
             "componentType": 5123,
             "count": 1,
             "type": "VEC4"
         },
         {
-            "bufferView": 4,
+            "bufferView": 5,
+            "byteOffset": 0,
+            "componentType": 5123,
+            "count": 1,
+            "type": "VEC4"
+        },
+        {
+            "bufferView": 6,
+            "byteOffset": 0,
+            "componentType": 5123,
+            "count": 1,
+            "type": "VEC4"
+        },
+        {
+            "bufferView": 7,
             "byteOffset": 0,
             "componentType": 5126,
             "count": 1,
             "type": "VEC4"
         },
         {
-            "bufferView": 5,
+            "bufferView": 8,
             "byteOffset": 0,
             "componentType": 5123,
             "count": 3,
