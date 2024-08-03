@@ -349,7 +349,8 @@ void TinyGltfImporter::doOpenData(Containers::Array<char>&& data, DataFlags) {
     }
 
     if(!_d->open) {
-        Utility::String::rtrimInPlace(err);
+        /* Trim trailing whitespace */
+        err.erase(err.find_last_not_of(" \t\f\v\r\n") + 1);
         Error{} << "Trade::TinyGltfImporter::openData(): error opening file:" << err;
         doClose();
         return;
