@@ -165,8 +165,7 @@ template<UnsignedInt dimensions> Containers::Optional<Containers::Array<char>> c
             return {};
         }
 
-        /** @todo clean up once StringView has findAnyNotOf() or some such */
-        if(std::string{swizzle}.find_first_not_of("rgba") != std::string::npos) {
+        if(!swizzle.trimmed("rgba"_s).isEmpty()) {
             Error{} << "Trade::BasisImageConverter::convertToData(): invalid characters in swizzle" << swizzle;
             return {};
         }

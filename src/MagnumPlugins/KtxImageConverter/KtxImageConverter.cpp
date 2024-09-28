@@ -26,7 +26,6 @@
 
 #include "KtxImageConverter.h"
 
-#include <string>
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/Pair.h>
@@ -751,8 +750,7 @@ template<UnsignedInt dimensions, template<UnsignedInt, typename> class View> Con
         return {};
     }
 
-    /** @todo clean up once StringView has findAnyNotOf() or some such */
-    if(std::string{swizzle}.find_first_not_of("rgba01") != std::string::npos) {
+    if(!swizzle.trimmed("rgba01"_s).isEmpty()) {
         Error{} << "Trade::KtxImageConverter::convertToData(): invalid characters in swizzle" << swizzle;
         return {};
     }
